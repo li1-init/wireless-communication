@@ -7,7 +7,10 @@
  *                 This makes a single faulty channel obvious.
  *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
  *                 KEY2 (PB2 / KEY_USER) toggles GREEN LED (PA11)
- *                 KEY3 (PB1 / KEY_CODE) toggles BLUE  LED (PB15)
+ *                 KEY3 (PB1 / KEY_CODE) toggles BLUE  LED (PB15 + PA12)
+ *
+ * Blue is temporarily driven on both candidate MCU pins so the physical
+ * board can reveal which layout is correct without another reflash.
  *
  * Key circuit on the PCB: switch to 3V3 + 2M pull-down (R14/R18/R17)
  *   -> key pressed = pin reads HIGH.

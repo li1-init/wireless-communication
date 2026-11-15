@@ -30,6 +30,9 @@ static void LED_OutputInit(void)
     gpio.GPIO_Pin = LED_B_PIN;
     GPIO_Init(LED_B_PORT, &gpio);
 
+    gpio.GPIO_Pin = LED_B_ALT_PIN;
+    GPIO_Init(LED_B_ALT_PORT, &gpio);
+
     gpio.GPIO_Pin = LED_Y_PIN;
     GPIO_Init(LED_Y_PORT, &gpio);
 
@@ -58,8 +61,16 @@ void LED_Set(led_color_t color, led_state_t state)
             else    { GPIO_ResetBits(LED_G_PORT, LED_G_PIN); }
             break;
         case LED_BLUE:
-            if (on) { GPIO_SetBits(LED_B_PORT, LED_B_PIN); }
-            else    { GPIO_ResetBits(LED_B_PORT, LED_B_PIN); }
+            if (on)
+            {
+                GPIO_SetBits(LED_B_PORT, LED_B_PIN);
+                GPIO_SetBits(LED_B_ALT_PORT, LED_B_ALT_PIN);
+            }
+            else
+            {
+                GPIO_ResetBits(LED_B_PORT, LED_B_PIN);
+                GPIO_ResetBits(LED_B_ALT_PORT, LED_B_ALT_PIN);
+            }
             break;
         case LED_YELLOW:
             if (on) { GPIO_SetBits(LED_Y_PORT, LED_Y_PIN); }
@@ -79,6 +90,7 @@ void LED_AllOff(void)
     GPIO_ResetBits(LED_R_PORT, LED_R_PIN);
     GPIO_ResetBits(LED_G_PORT, LED_G_PIN);
     GPIO_ResetBits(LED_B_PORT, LED_B_PIN);
+    GPIO_ResetBits(LED_B_ALT_PORT, LED_B_ALT_PIN);
     GPIO_ResetBits(LED_Y_PORT, LED_Y_PIN);
     GPIO_ResetBits(LED_W_PORT, LED_W_PIN);
 }
