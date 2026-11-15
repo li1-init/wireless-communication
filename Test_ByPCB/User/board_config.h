@@ -4,9 +4,14 @@
 #include "stm32l1xx.h"
 
 /* ============================================================================
- * Test_ByPCB : pin map taken from "发射.pcb" netlist (PADS CP pad records).
+ * Test_ByPCB : pin map reconciled against the two hardware tests.
  *   MCU = U1 STM32L151C8T6, LQFP-48.
- *   This is the REAL board that is opened in Altium Designer.
+ *
+ *   Working pins confirmed on the physical board:
+ *     RED = PB3, GREEN = PA11, BLUE = PB15.
+ *   The PADS netlist says BLED_CTR = PA12, but the PDF build drives PB15 and
+ *   that is the only blue channel observed to work.  The measured result is
+ *   therefore treated as authoritative for this physical board.
  * ==========================================================================*/
 
 /* ---- Radio bus / interrupts (kept from the original template) ------------ */
@@ -29,19 +34,20 @@
 #define EEPROM_DEVICE_UID_MAGIC_ADDR 0x08080004U
 #define DEVICE_UID_MAGIC             0x5AA5A55AUL
 
-/* ---- LED channels (PCB) ---------------------------------------------------
+/* ---- LED channels (measured physical board) -------------------------------
  * LED_R_CTR = PB3  (pin 39)  <-- JTDO
  * LED_G_CTR = PA11 (pin 32)
- * LED_B_CTR = PA12 (pin 33)
- * LED_Y_CTR = PA10 (pin 31)
- * LED_W_CTR = PA9  (pin 30)
+ * LED_B_CTR = PB15 (pin 28)
+ *
+ * PA12 was marked BLED_CTR in the PADS file, but it does not drive the blue
+ * LED on the tested physical board.  Do not use PA12 for the blue channel.
  */
 #define LED_R_PORT              GPIOB
 #define LED_R_PIN               GPIO_Pin_3
 #define LED_G_PORT              GPIOA
 #define LED_G_PIN               GPIO_Pin_11
-#define LED_B_PORT              GPIOA
-#define LED_B_PIN               GPIO_Pin_12
+#define LED_B_PORT              GPIOB
+#define LED_B_PIN               GPIO_Pin_15
 #define LED_Y_PORT              GPIOA
 #define LED_Y_PIN               GPIO_Pin_10
 #define LED_W_PORT              GPIOA

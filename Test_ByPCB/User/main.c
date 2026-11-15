@@ -1,13 +1,13 @@
 /* ============================================================================
  * Test_ByPCB.c
- * Pin map: "发射.pcb" netlist (real board opened in Altium Designer).
+ * Pin map: measured physical-board map after comparing both test builds.
  *
  * Behaviour:
- *   1) Power on : R, G, B and Y LEDs are tested one at a time for 3 rounds.
+ *   1) Power on : R, G and B LEDs are tested one at a time for 3 rounds.
  *                 This makes a single faulty channel obvious.
  *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
  *                 KEY2 (PB2 / KEY_USER) toggles GREEN LED (PA11)
- *                 KEY3 (PB1 / KEY_CODE) toggles BLUE  LED (PA12)
+ *                 KEY3 (PB1 / KEY_CODE) toggles BLUE  LED (PB15)
  *
  * Key circuit on the PCB: switch to 3V3 + 2M pull-down (R14/R18/R17)
  *   -> key pressed = pin reads HIGH.
@@ -64,14 +64,14 @@ int main(void)
     /* ---- Power-on self test: test each channel separately ---- */
     {
         uint8_t i;
-        const led_color_t colors[4] = {
-            LED_RED, LED_GREEN, LED_BLUE, LED_YELLOW
+        const led_color_t colors[3] = {
+            LED_RED, LED_GREEN, LED_BLUE
         };
 
         for (i = 0U; i < 3U; ++i)
         {
             uint8_t color;
-            for (color = 0U; color < 4U; ++color)
+            for (color = 0U; color < 3U; ++color)
             {
                 LED_Set(colors[color], LED_STATE_ON);
                 Delay_TIM6_1ms(600U);
