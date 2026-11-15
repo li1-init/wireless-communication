@@ -3,11 +3,11 @@
  * Pin map: "发射.pcb" netlist (real board opened in Altium Designer).
  *
  * Behaviour:
- *   1) Power on : all 4 colour LEDs (R/G/B/Y) blink together 3 times
- *                 (300 ms on / 300 ms off), then all LEDs OFF.
+ *   1) Power on : R, G, B and Y LEDs are tested one at a time for 3 rounds.
+ *                 This makes a single faulty channel obvious.
  *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
- *                 KEY2 (PA2 / KEY_USER) toggles GREEN LED (PB4)
- *                 KEY3 (PA3 / KEY_CODE) toggles BLUE  LED (PA12)
+ *                 KEY2 (PB2 / KEY_USER) toggles GREEN LED (PA11)
+ *                 KEY3 (PB1 / KEY_CODE) toggles BLUE  LED (PA12)
  *
  * Key circuit on the PCB: switch to 3V3 + 2M pull-down (R14/R18/R17)
  *   -> key pressed = pin reads HIGH.
@@ -61,19 +61,23 @@ int main(void)
     KeyPins_Init();
     LED_Init();
 
-    /* ---- Power-on self test: blink all LEDs 3 times, then off ---- */
+    /* ---- Power-on self test: test each channel separately ---- */
     {
         uint8_t i;
+        const led_color_t colors[4] = {
+            LED_RED, LED_GREEN, LED_BLUE, LED_YELLOW
+        };
+
         for (i = 0U; i < 3U; ++i)
         {
-            LED_Set(LED_RED,    LED_STATE_ON);
-            LED_Set(LED_GREEN,  LED_STATE_ON);
-            LED_Set(LED_BLUE,   LED_STATE_ON);
-            LED_Set(LED_YELLOW, LED_STATE_ON);
-            Delay_TIM6_1ms(300U);
-
-            LED_AllOff();
-            Delay_TIM6_1ms(300U);
+            uint8_t color;
+            for (color = 0U; color < 4U; ++color)
+            {
+                LED_Set(colors[color], LED_STATE_ON);
+                Delay_TIM6_1ms(600U);
+                LED_AllOff();
+                Delay_TIM6_1ms(250U);
+            }
         }
         LED_AllOff();
     }

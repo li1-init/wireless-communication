@@ -4,7 +4,7 @@
 #include "stm32l1xx.h"
 
 /* Test build: LED pins come straight from board_config.h (real PCB netlist).
- * GPIO high = LED on (N-MOS low-side switch on the PCB). */
+ * GPIO high = LED on; the four colour LED anode nets are driven directly. */
 static void LED_OutputInit(void)
 {
     GPIO_InitTypeDef gpio;
