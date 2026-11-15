@@ -1,58 +1,109 @@
 /* ============================================================================
  * Test_ByPCB.c
- * Five small 3 mm white LED test, physical order left -> right:
+ * Pin map: measured physical-board map after comparing both test builds.
  *
- *   W1 D2  PB9  / pin 46  / upper pad +, lower pad -
- *   W2 D4  PB6  / pin 42  / upper pad +, lower pad -
- *   W3 D6  PB8  / pin 45  / upper pad +, lower pad -
- *   W4 D8  PB5  / pin 41  / upper pad +, lower pad -
- *   W5 D11 PB4  / pin 40  / upper pad +, lower pad -
+ * Behaviour:
+ *   1) Power on : RED, GREEN and WHITE LEDs light together for 3 s, turn
+ *                 off for 3 s, and repeat for 3 complete cycles.
+ *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
+ *                 KEY2 (PB2 / KEY_USER) toggles GREEN LED (PA11)
+ *                 KEY3 (PB1 / KEY_CODE) toggles WHITE LED (PA9)
  *
- * Test sequence:
- *   1. W1..W5 light one at a time for 2 s each.
- *   2. All five light together for 1.5 s.
- *   3. W1 and W2 light together for 3 s.
- *   4. Everything turns off, then the full sequence repeats.
+ * The large W / White LED is LED_W_CTR on PA9.  CODE is KEY_CODE on PB1.
+ *
+ * Key circuit on the PCB: switch to 3V3 + 2M pull-down (R14/R18/R17)
+ *   -> key pressed = pin reads HIGH.
  * ==========================================================================*/
 #include "stm32l1xx.h"
 #include "board_config.h"
 #include "platform.h"
 #include "led.h"
 
+#define KEY_DEBOUNCE_MS     20U
+#define STARTUP_CYCLES      3U
+#define STARTUP_ON_MS       3000U
+#define STARTUP_OFF_MS      3000U
+
+static void KeyPins_Init(void)
+{
+    GPIO_InitTypeDef gpio;
+
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
+
+    gpio.GPIO_Mode  = GPIO_Mode_IN;
+    gpio.GPIO_Speed = GPIO_Speed_40MHz;
+    gpio.GPIO_PuPd  = GPIO_PuPd_NOPULL;      /* external 2M pull-down */
+
+    gpio.GPIO_Pin = KEY1_PIN;
+    GPIO_Init(KEY1_PORT, &gpio);
+
+    gpio.GPIO_Pin = KEY2_PIN;
+    GPIO_Init(KEY2_PORT, &gpio);
+
+    gpio.GPIO_Pin = KEY3_PIN;
+    GPIO_Init(KEY3_PORT, &gpio);
+}
+
+static uint8_t Key_IsPressed(GPIO_TypeDef* port, uint16_t pin)
+{
+    if (GPIO_ReadInputDataBit(port, pin) != Bit_SET)
+    {
+        return 0U;
+    }
+    Delay_TIM6_1ms(KEY_DEBOUNCE_MS);
+    return (GPIO_ReadInputDataBit(port, pin) == Bit_SET) ? 1U : 0U;
+}
+
 int main(void)
 {
-    uint8_t position;
+    uint8_t red_on   = 0U;
+    uint8_t green_on = 0U;
+    uint8_t white_on = 0U;
 
     RCC_Config();
     TIM6_Delay_Config();
+
+    KeyPins_Init();
     LED_Init();
 
+    /* ---- Power-on self test: R/G/W together, 3 s on and 3 s off x 3 ---- */
+    {
+        uint8_t i;
+        for (i = 0U; i < STARTUP_CYCLES; ++i)
+        {
+            LED_Set(LED_RED,   LED_STATE_ON);
+            LED_Set(LED_GREEN, LED_STATE_ON);
+            LED_Set(LED_WHITE, LED_STATE_ON);
+            Delay_TIM6_1ms(STARTUP_ON_MS);
+
+            LED_AllOff();
+            Delay_TIM6_1ms(STARTUP_OFF_MS);
+        }
+        LED_AllOff();
+    }
+
+    /* ---- Main loop: each key toggles its own LED ---- */
     while (1)
     {
-        /* Existing test: positions 1..5 from left to right. */
-        for (position = 1U; position <= 5U; ++position)
+        if (Key_IsPressed(KEY1_PORT, KEY1_PIN) != 0U)
         {
-            LED_AllOff();
-            LED_SetPosition(position, LED_STATE_ON);
-            Delay_TIM6_1ms(2000U);
+            red_on = (uint8_t)(!red_on);
+            LED_Set(LED_RED, red_on ? LED_STATE_ON : LED_STATE_OFF);
+            while (GPIO_ReadInputDataBit(KEY1_PORT, KEY1_PIN) == Bit_SET) { }
         }
 
-        /* Existing test: all five together. */
-        LED_AllOff();
-        Delay_TIM6_1ms(500U);
-        for (position = 1U; position <= 5U; ++position)
+        if (Key_IsPressed(KEY2_PORT, KEY2_PIN) != 0U)
         {
-            LED_SetPosition(position, LED_STATE_ON);
+            green_on = (uint8_t)(!green_on);
+            LED_Set(LED_GREEN, green_on ? LED_STATE_ON : LED_STATE_OFF);
+            while (GPIO_ReadInputDataBit(KEY2_PORT, KEY2_PIN) == Bit_SET) { }
         }
-        Delay_TIM6_1ms(1500U);
 
-        /* New test: the first two LEDs together, then off. */
-        LED_AllOff();
-        Delay_TIM6_1ms(500U);
-        LED_SetPosition(1U, LED_STATE_ON);
-        LED_SetPosition(2U, LED_STATE_ON);
-        Delay_TIM6_1ms(3000U);
-        LED_AllOff();
-        Delay_TIM6_1ms(1000U);
+        if (Key_IsPressed(KEY3_PORT, KEY3_PIN) != 0U)
+        {
+            white_on = (uint8_t)(!white_on);
+            LED_Set(LED_WHITE, white_on ? LED_STATE_ON : LED_STATE_OFF);
+            while (GPIO_ReadInputDataBit(KEY3_PORT, KEY3_PIN) == Bit_SET) { }
+        }
     }
 }

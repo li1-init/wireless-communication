@@ -3,8 +3,8 @@
 #include "platform.h"
 #include "stm32l1xx.h"
 
-/* Test build for the five top LEDs R/B/G/Y/W.
- * All channels are active-high push-pull outputs. */
+/* PCB build with the working PDF blue-channel setup copied in.
+ * PB15 is driven high for blue; PA12/PA9/PA8/PB14 are held low. */
 static void LED_OutputInit(void)
 {
     GPIO_InitTypeDef gpio;
@@ -30,22 +30,17 @@ static void LED_OutputInit(void)
     gpio.GPIO_Pin = LED_B_PIN;
     GPIO_Init(LED_B_PORT, &gpio);
 
+    gpio.GPIO_Pin = LED_B_HOLD_LOW_PIN;
+    GPIO_Init(LED_B_HOLD_LOW_PORT, &gpio);
+
+    gpio.GPIO_Pin = LED_G_AUX_PIN;
+    GPIO_Init(LED_G_AUX_PORT, &gpio);
+
     gpio.GPIO_Pin = LED_Y_PIN;
     GPIO_Init(LED_Y_PORT, &gpio);
 
     gpio.GPIO_Pin = LED_W_PIN;
     GPIO_Init(LED_W_PORT, &gpio);
-
-    gpio.GPIO_Pin = LED_W1_PIN;
-    GPIO_Init(LED_W1_PORT, &gpio);
-    gpio.GPIO_Pin = LED_W2_PIN;
-    GPIO_Init(LED_W2_PORT, &gpio);
-    gpio.GPIO_Pin = LED_W3_PIN;
-    GPIO_Init(LED_W3_PORT, &gpio);
-    gpio.GPIO_Pin = LED_W4_PIN;
-    GPIO_Init(LED_W4_PORT, &gpio);
-    gpio.GPIO_Pin = LED_W5_PIN;
-    GPIO_Init(LED_W5_PORT, &gpio);
 }
 
 void LED_Init(void)
@@ -69,8 +64,19 @@ void LED_Set(led_color_t color, led_state_t state)
             else    { GPIO_ResetBits(LED_G_PORT, LED_G_PIN); }
             break;
         case LED_BLUE:
-            if (on) { GPIO_SetBits(LED_B_PORT, LED_B_PIN); }
-            else    { GPIO_ResetBits(LED_B_PORT, LED_B_PIN); }
+            if (on)
+            {
+                GPIO_SetBits(LED_B_PORT, LED_B_PIN);
+                GPIO_ResetBits(LED_B_HOLD_LOW_PORT, LED_B_HOLD_LOW_PIN);
+                GPIO_ResetBits(LED_G_AUX_PORT, LED_G_AUX_PIN);
+                GPIO_ResetBits(LED_Y_PORT, LED_Y_PIN);
+                GPIO_ResetBits(LED_W_PORT, LED_W_PIN);
+            }
+            else
+            {
+                GPIO_ResetBits(LED_B_PORT, LED_B_PIN);
+                GPIO_ResetBits(LED_B_HOLD_LOW_PORT, LED_B_HOLD_LOW_PIN);
+            }
             break;
         case LED_YELLOW:
             if (on) { GPIO_SetBits(LED_Y_PORT, LED_Y_PIN); }
@@ -90,39 +96,13 @@ void LED_AllOff(void)
     GPIO_ResetBits(LED_R_PORT, LED_R_PIN);
     GPIO_ResetBits(LED_G_PORT, LED_G_PIN);
     GPIO_ResetBits(LED_B_PORT, LED_B_PIN);
+    GPIO_ResetBits(LED_B_HOLD_LOW_PORT, LED_B_HOLD_LOW_PIN);
+    GPIO_ResetBits(LED_G_AUX_PORT, LED_G_AUX_PIN);
     GPIO_ResetBits(LED_Y_PORT, LED_Y_PIN);
     GPIO_ResetBits(LED_W_PORT, LED_W_PIN);
-    GPIO_ResetBits(LED_W1_PORT, LED_W1_PIN);
-    GPIO_ResetBits(LED_W2_PORT, LED_W2_PIN);
-    GPIO_ResetBits(LED_W3_PORT, LED_W3_PIN);
-    GPIO_ResetBits(LED_W4_PORT, LED_W4_PIN);
-    GPIO_ResetBits(LED_W5_PORT, LED_W5_PIN);
 }
 
-void LED_SetPosition(uint8_t position, led_state_t state)
-{
-    GPIO_TypeDef *port;
-    uint16_t pin;
-
-    switch (position)
-    {
-        case 1: port = LED_W1_PORT; pin = LED_W1_PIN; break;
-        case 2: port = LED_W2_PORT; pin = LED_W2_PIN; break;
-        case 3: port = LED_W3_PORT; pin = LED_W3_PIN; break;
-        case 4: port = LED_W4_PORT; pin = LED_W4_PIN; break;
-        case 5: port = LED_W5_PORT; pin = LED_W5_PIN; break;
-        default: return;
-    }
-
-    if (state == LED_STATE_ON)
-    {
-        GPIO_SetBits(port, pin);
-    }
-    else
-    {
-        GPIO_ResetBits(port, pin);
-    }
-}
+void LED_SetPosition(uint8_t position, led_state_t state) { (void)position; (void)state; }
 void CodeLED_Display(uint8_t led_code, uint8_t state)     { (void)led_code; (void)state; }
 void WhiteLED_Display(uint8_t led_position, uint8_t state){ (void)led_position; (void)state; }
 
