@@ -49,6 +49,18 @@
 #define LED_W_PORT              GPIOA
 #define LED_W_PIN               GPIO_Pin_9
 
+/* Five small 3 mm white LEDs, physical order from left to right. */
+#define LED_W1_PORT             GPIOB
+#define LED_W1_PIN              GPIO_Pin_9
+#define LED_W2_PORT             GPIOB
+#define LED_W2_PIN              GPIO_Pin_6
+#define LED_W3_PORT             GPIOB
+#define LED_W3_PIN              GPIO_Pin_8
+#define LED_W4_PORT             GPIOB
+#define LED_W4_PIN              GPIO_Pin_5
+#define LED_W5_PORT             GPIOB
+#define LED_W5_PIN              GPIO_Pin_4
+
 /* ---- Keys (PCB) -----------------------------------------------------------
  * SW1 KEY_SW   = PA0 (pin 10)
  * SW2 KEY_USER = PB2 (pin 20)
