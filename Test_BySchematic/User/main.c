@@ -3,8 +3,8 @@
  * Pin map: eTrap-01MS Luminator Ver10.pdf  (page 3 / page 4)
  *
  * Behaviour:
- *   1) Power on : all 4 colour LEDs blink together 3 times (300 ms on/off),
- *                 then all LEDs are switched OFF.
+ *   1) Power on : R, G, B and Y LEDs are tested one at a time for 3 rounds.
+ *                 This makes a single faulty channel obvious.
  *   2) Then     : KEY1 (PA0) toggles RED   LED on/off
  *                 KEY2 (PB1) toggles GREEN LED on/off
  *                 KEY3 (PB2) toggles BLUE  LED on/off
@@ -65,19 +65,23 @@ int main(void)
     KeyPins_Init();
     LED_Init();
 
-    /* ---- Power-on self test: blink all LEDs 3 times, then off ---- */
+    /* ---- Power-on self test: test each channel separately ---- */
     {
         uint8_t i;
+        const led_color_t colors[4] = {
+            LED_RED, LED_GREEN, LED_BLUE, LED_YELLOW
+        };
+
         for (i = 0U; i < 3U; ++i)
         {
-            LED_Set(LED_RED,    LED_STATE_ON);
-            LED_Set(LED_GREEN,  LED_STATE_ON);
-            LED_Set(LED_BLUE,   LED_STATE_ON);
-            LED_Set(LED_YELLOW, LED_STATE_ON);
-            Delay_TIM6_1ms(300U);
-
-            LED_AllOff();
-            Delay_TIM6_1ms(300U);
+            uint8_t color;
+            for (color = 0U; color < 4U; ++color)
+            {
+                LED_Set(colors[color], LED_STATE_ON);
+                Delay_TIM6_1ms(600U);
+                LED_AllOff();
+                Delay_TIM6_1ms(250U);
+            }
         }
         LED_AllOff();
     }
