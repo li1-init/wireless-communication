@@ -7,10 +7,9 @@
  *                 This makes a single faulty channel obvious.
  *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
  *                 KEY2 (PB2 / KEY_USER) toggles GREEN LED (PA11)
- *                 KEY3 (PB1 / KEY_CODE) toggles BLUE  LED (PB15)
+ *                 KEY3 (PB1 / KEY_CODE) toggles WHITE LED (PA9)
  *
- * Blue is ported from the working Test_BySchematic build: PB15 is driven
- * high, while PA12, PA9, PA8 and PB14 stay low.
+ * The large W / White LED is LED_W_CTR on PA9.  CODE is KEY_CODE on PB1.
  *
  * Key circuit on the PCB: switch to 3V3 + 2M pull-down (R14/R18/R17)
  *   -> key pressed = pin reads HIGH.
@@ -56,7 +55,7 @@ int main(void)
 {
     uint8_t red_on   = 0U;
     uint8_t green_on = 0U;
-    uint8_t blue_on  = 0U;
+    uint8_t white_on;
 
     RCC_Config();
     TIM6_Delay_Config();
@@ -85,6 +84,10 @@ int main(void)
         LED_AllOff();
     }
 
+    /* Start with the large W LED illuminated so CODE can be tested directly. */
+    white_on = 1U;
+    LED_Set(LED_WHITE, LED_STATE_ON);
+
     /* ---- Main loop: each key toggles its own LED ---- */
     while (1)
     {
@@ -104,8 +107,8 @@ int main(void)
 
         if (Key_IsPressed(KEY3_PORT, KEY3_PIN) != 0U)
         {
-            blue_on = (uint8_t)(!blue_on);
-            LED_Set(LED_BLUE, blue_on ? LED_STATE_ON : LED_STATE_OFF);
+            white_on = (uint8_t)(!white_on);
+            LED_Set(LED_WHITE, white_on ? LED_STATE_ON : LED_STATE_OFF);
             while (GPIO_ReadInputDataBit(KEY3_PORT, KEY3_PIN) == Bit_SET) { }
         }
     }
