@@ -3,8 +3,8 @@
  * Pin map: measured physical-board map after comparing both test builds.
  *
  * Behaviour:
- *   1) Power on : RED, GREEN and WHITE LEDs light together for 3 s, turn
- *                 off for 3 s, and repeat for 3 complete cycles.
+ *   1) Power on : RED, GREEN and WHITE LEDs blink together for 3 complete
+ *                 on/off cycles.  The full startup test lasts 3 seconds total.
  *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
  *                 KEY2 (PB2 / KEY_USER) toggles GREEN LED (PA11)
  *                 KEY3 (PB1 / KEY_CODE) toggles WHITE LED (PA9)
@@ -21,8 +21,8 @@
 
 #define KEY_DEBOUNCE_MS     20U
 #define STARTUP_CYCLES      3U
-#define STARTUP_ON_MS       3000U
-#define STARTUP_OFF_MS      3000U
+#define STARTUP_ON_MS       500U
+#define STARTUP_OFF_MS      500U
 
 static void KeyPins_Init(void)
 {
@@ -66,7 +66,7 @@ int main(void)
     KeyPins_Init();
     LED_Init();
 
-    /* ---- Power-on self test: R/G/W together, 3 s on and 3 s off x 3 ---- */
+    /* ---- 3 s total: R/G/W together, 500 ms on + 500 ms off x 3 ---- */
     {
         uint8_t i;
         for (i = 0U; i < STARTUP_CYCLES; ++i)
