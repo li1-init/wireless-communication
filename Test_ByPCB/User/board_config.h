@@ -4,14 +4,11 @@
 #include "stm32l1xx.h"
 
 /* ============================================================================
- * Test_ByPCB : pin map reconciled against the two hardware tests.
+ * Test_ByPCB : top five R/B/G/Y/W LED hardware test.
  *   MCU = U1 STM32L151C8T6, LQFP-48.
  *
- *   Working pins confirmed on the physical board:
- *     RED = PB3, GREEN = PA11.
- *   The blue channel is ported from the Test_BySchematic build that was
- *   observed to work: PB15 drives blue while all other PDF LED pins remain
- *   low.  PA12 is also held low because driving it high did not work.
+ *   Exact "发射.pcb" PADS colour-LED nets:
+ *     RED = PB3, BLUE = PA12, GREEN = PA11, YELLOW = PA10, WHITE = PA9.
  * ==========================================================================*/
 
 /* ---- Radio bus / interrupts (kept from the original template) ------------ */
@@ -34,29 +31,21 @@
 #define EEPROM_DEVICE_UID_MAGIC_ADDR 0x08080004U
 #define DEVICE_UID_MAGIC             0x5AA5A55AUL
 
-/* ---- LED channels (measured physical board) -------------------------------
+/* ---- Top five colour LEDs (PADS netlist) ----------------------------------
  * LED_R_CTR = PB3  (pin 39)  <-- JTDO
+ * LED_B_CTR = PA12 (pin 33)
  * LED_G_CTR = PA11 (pin 32)
- * LED_B_CTR = PB15 (pin 28, proven by Test_BySchematic)
- *
- * Additional pins are configured low to reproduce the exact GPIO state of
- * the working PDF test: PA9, PA8, PB14.  PA12 stays low as well.
- *
- * PA12 was marked BLED_CTR in the PADS file, but it does not drive the blue
- * LED on the tested physical board.  Do not use PA12 for the blue channel.
+ * LED_Y_CTR = PA10 (pin 31)
+ * LED_W_CTR = PA9  (pin 30)
  */
 #define LED_R_PORT              GPIOB
 #define LED_R_PIN               GPIO_Pin_3
 #define LED_G_PORT              GPIOA
 #define LED_G_PIN               GPIO_Pin_11
-#define LED_B_PORT              GPIOB
-#define LED_B_PIN               GPIO_Pin_15
-#define LED_B_HOLD_LOW_PORT     GPIOA
-#define LED_B_HOLD_LOW_PIN      GPIO_Pin_12
-#define LED_G_AUX_PORT          GPIOA
-#define LED_G_AUX_PIN           GPIO_Pin_8
-#define LED_Y_PORT              GPIOB
-#define LED_Y_PIN               GPIO_Pin_14
+#define LED_B_PORT              GPIOA
+#define LED_B_PIN               GPIO_Pin_12
+#define LED_Y_PORT              GPIOA
+#define LED_Y_PIN               GPIO_Pin_10
 #define LED_W_PORT              GPIOA
 #define LED_W_PIN               GPIO_Pin_9
 
