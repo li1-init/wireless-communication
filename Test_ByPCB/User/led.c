@@ -3,8 +3,8 @@
 #include "platform.h"
 #include "stm32l1xx.h"
 
-/* Test build: LED pins come straight from board_config.h (real PCB netlist).
- * GPIO high = LED on; the four colour LED anode nets are driven directly. */
+/* PCB build with the working PDF blue-channel setup copied in.
+ * PB15 is driven high for blue; PA12/PA9/PA8/PB14 are held low. */
 static void LED_OutputInit(void)
 {
     GPIO_InitTypeDef gpio;
@@ -30,8 +30,11 @@ static void LED_OutputInit(void)
     gpio.GPIO_Pin = LED_B_PIN;
     GPIO_Init(LED_B_PORT, &gpio);
 
-    gpio.GPIO_Pin = LED_B_ALT_PIN;
-    GPIO_Init(LED_B_ALT_PORT, &gpio);
+    gpio.GPIO_Pin = LED_B_HOLD_LOW_PIN;
+    GPIO_Init(LED_B_HOLD_LOW_PORT, &gpio);
+
+    gpio.GPIO_Pin = LED_G_AUX_PIN;
+    GPIO_Init(LED_G_AUX_PORT, &gpio);
 
     gpio.GPIO_Pin = LED_Y_PIN;
     GPIO_Init(LED_Y_PORT, &gpio);
@@ -64,12 +67,15 @@ void LED_Set(led_color_t color, led_state_t state)
             if (on)
             {
                 GPIO_SetBits(LED_B_PORT, LED_B_PIN);
-                GPIO_SetBits(LED_B_ALT_PORT, LED_B_ALT_PIN);
+                GPIO_ResetBits(LED_B_HOLD_LOW_PORT, LED_B_HOLD_LOW_PIN);
+                GPIO_ResetBits(LED_G_AUX_PORT, LED_G_AUX_PIN);
+                GPIO_ResetBits(LED_Y_PORT, LED_Y_PIN);
+                GPIO_ResetBits(LED_W_PORT, LED_W_PIN);
             }
             else
             {
                 GPIO_ResetBits(LED_B_PORT, LED_B_PIN);
-                GPIO_ResetBits(LED_B_ALT_PORT, LED_B_ALT_PIN);
+                GPIO_ResetBits(LED_B_HOLD_LOW_PORT, LED_B_HOLD_LOW_PIN);
             }
             break;
         case LED_YELLOW:
@@ -90,7 +96,8 @@ void LED_AllOff(void)
     GPIO_ResetBits(LED_R_PORT, LED_R_PIN);
     GPIO_ResetBits(LED_G_PORT, LED_G_PIN);
     GPIO_ResetBits(LED_B_PORT, LED_B_PIN);
-    GPIO_ResetBits(LED_B_ALT_PORT, LED_B_ALT_PIN);
+    GPIO_ResetBits(LED_B_HOLD_LOW_PORT, LED_B_HOLD_LOW_PIN);
+    GPIO_ResetBits(LED_G_AUX_PORT, LED_G_AUX_PIN);
     GPIO_ResetBits(LED_Y_PORT, LED_Y_PIN);
     GPIO_ResetBits(LED_W_PORT, LED_W_PIN);
 }
