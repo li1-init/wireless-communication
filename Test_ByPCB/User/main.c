@@ -1,0 +1,105 @@
+/* ============================================================================
+ * Test_ByPCB.c
+ * Pin map: "发射.pcb" netlist (real board opened in Altium Designer).
+ *
+ * Behaviour:
+ *   1) Power on : all 4 colour LEDs (R/G/B/Y) blink together 3 times
+ *                 (300 ms on / 300 ms off), then all LEDs OFF.
+ *   2) Then     : KEY1 (PA0 / KEY_SW)   toggles RED   LED (PB3)
+ *                 KEY2 (PA2 / KEY_USER) toggles GREEN LED (PB4)
+ *                 KEY3 (PA3 / KEY_CODE) toggles BLUE  LED (PA12)
+ *
+ * Key circuit on the PCB: switch to 3V3 + 2M pull-down (R14/R18/R17)
+ *   -> key pressed = pin reads HIGH.
+ * ==========================================================================*/
+#include "stm32l1xx.h"
+#include "board_config.h"
+#include "platform.h"
+#include "led.h"
+
+#define KEY_DEBOUNCE_MS     20U
+
+static void KeyPins_Init(void)
+{
+    GPIO_InitTypeDef gpio;
+
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
+
+    gpio.GPIO_Mode  = GPIO_Mode_IN;
+    gpio.GPIO_Speed = GPIO_Speed_40MHz;
+    gpio.GPIO_PuPd  = GPIO_PuPd_NOPULL;      /* external 2M pull-down */
+
+    gpio.GPIO_Pin = KEY1_PIN;
+    GPIO_Init(KEY1_PORT, &gpio);
+
+    gpio.GPIO_Pin = KEY2_PIN;
+    GPIO_Init(KEY2_PORT, &gpio);
+
+    gpio.GPIO_Pin = KEY3_PIN;
+    GPIO_Init(KEY3_PORT, &gpio);
+}
+
+static uint8_t Key_IsPressed(GPIO_TypeDef* port, uint16_t pin)
+{
+    if (GPIO_ReadInputDataBit(port, pin) != Bit_SET)
+    {
+        return 0U;
+    }
+    Delay_TIM6_1ms(KEY_DEBOUNCE_MS);
+    return (GPIO_ReadInputDataBit(port, pin) == Bit_SET) ? 1U : 0U;
+}
+
+int main(void)
+{
+    uint8_t red_on   = 0U;
+    uint8_t green_on = 0U;
+    uint8_t blue_on  = 0U;
+
+    RCC_Config();
+    TIM6_Delay_Config();
+
+    KeyPins_Init();
+    LED_Init();
+
+    /* ---- Power-on self test: blink all LEDs 3 times, then off ---- */
+    {
+        uint8_t i;
+        for (i = 0U; i < 3U; ++i)
+        {
+            LED_Set(LED_RED,    LED_STATE_ON);
+            LED_Set(LED_GREEN,  LED_STATE_ON);
+            LED_Set(LED_BLUE,   LED_STATE_ON);
+            LED_Set(LED_YELLOW, LED_STATE_ON);
+            Delay_TIM6_1ms(300U);
+
+            LED_AllOff();
+            Delay_TIM6_1ms(300U);
+        }
+        LED_AllOff();
+    }
+
+    /* ---- Main loop: each key toggles its own LED ---- */
+    while (1)
+    {
+        if (Key_IsPressed(KEY1_PORT, KEY1_PIN) != 0U)
+        {
+            red_on = (uint8_t)(!red_on);
+            LED_Set(LED_RED, red_on ? LED_STATE_ON : LED_STATE_OFF);
+            while (GPIO_ReadInputDataBit(KEY1_PORT, KEY1_PIN) == Bit_SET) { }
+        }
+
+        if (Key_IsPressed(KEY2_PORT, KEY2_PIN) != 0U)
+        {
+            green_on = (uint8_t)(!green_on);
+            LED_Set(LED_GREEN, green_on ? LED_STATE_ON : LED_STATE_OFF);
+            while (GPIO_ReadInputDataBit(KEY2_PORT, KEY2_PIN) == Bit_SET) { }
+        }
+
+        if (Key_IsPressed(KEY3_PORT, KEY3_PIN) != 0U)
+        {
+            blue_on = (uint8_t)(!blue_on);
+            LED_Set(LED_BLUE, blue_on ? LED_STATE_ON : LED_STATE_OFF);
+            while (GPIO_ReadInputDataBit(KEY3_PORT, KEY3_PIN) == Bit_SET) { }
+        }
+    }
+}

@@ -1,0 +1,29 @@
+# Keep the repository source-focused. Generated Keil output, caches, and
+# third-party unchanged libraries are intentionally excluded.
+*
+!*/
+
+# Original/common application source
+!Dishu-WH_Rced/User/**
+!Dishu-WH_Trans/User/**
+
+# Test applications and their Keil project definitions
+!Test_ByPCB/User/**
+!Test_ByPCB/MDK/*.uvprojx
+!Test_ByPCB/MDK/Test_ByPCB.sct
+!Test_BySchematic/User/**
+!Test_BySchematic/MDK/*.uvprojx
+!Test_BySchematic/MDK/Test_BySchematic.sct
+
+# Editor/local backups are not source history
+*.bak
+
+# Hardware evidence used to derive the pin map
+!硬件/*.pcb
+!硬件/*.pdf
+!硬件/*.docx
+!MCU引脚测试说明与最终引脚表.docx
+
+# Repository documentation
+!README.md
+!.gitignore
