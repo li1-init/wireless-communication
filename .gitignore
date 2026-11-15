@@ -23,6 +23,7 @@
 !硬件/*.pdf
 !硬件/*.docx
 !MCU引脚测试说明与最终引脚表.docx
+!实际板卡IO引脚反推结论_三灯三键_20261115.docx
 
 # Repository documentation
 !README.md
