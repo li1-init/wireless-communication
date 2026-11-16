@@ -5,7 +5,7 @@
  * Radio NSEL is PA4, NOT transmitter PA2. PB5/PB6 are left untouched. */
 #define BOARD_IS_TX 0
 #define BOARD_HAS_LEDS 0
-#define BOARD_HAS_BUZZER 0
+#define BOARD_HAS_BUZZER 1
 #define BOARD_HAS_WHITE 0
 #define BOARD_HAS_CODE 0
 #define RADIO_NSEL_PIN GPIO_Pin_4
