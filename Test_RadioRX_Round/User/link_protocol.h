@@ -6,7 +6,7 @@
 #define LINK_CHANNEL 0U
 /* Receiver learns one sender ID per power cycle and requires strictly
  * increasing sequence numbers before producing a success indication. */
-#define LINK_EXPECTED_SENDER_ID 3022750472UL
+#define LINK_EXPECTED_SENDER_ID 3155002632UL
 enum { LINK_BEACON=0, LINK_SWITCH=1, LINK_USER=2, LINK_CODE=3 };
 typedef struct {
     uint32_t sequence;
