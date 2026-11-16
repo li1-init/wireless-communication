@@ -15,6 +15,18 @@
 !Test_BySchematic/MDK/*.uvprojx
 !Test_BySchematic/MDK/Test_BySchematic.sct
 
+# Only active maintained send/receive projects
+!Test_RadioTX_Square/
+!Test_RadioTX_Square/User/**
+!Test_RadioTX_Square/MDK/*.uvprojx
+!Test_RadioTX_Square/MDK/*.uvoptx
+!Test_RadioTX_Square/MDK/Build/*.hex
+!Test_RadioRX_Round/
+!Test_RadioRX_Round/User/**
+!Test_RadioRX_Round/MDK/*.uvprojx
+!Test_RadioRX_Round/MDK/*.uvoptx
+!Test_RadioRX_Round/MDK/Build/*.hex
+
 # Editor/local backups are not source history
 *.bak
 
