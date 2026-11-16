@@ -198,7 +198,11 @@ uint8_t Radio_Init(void)
     for(i=0;i<8;++i) g_radio.part_info[i]=reply[i];
     g_radio.part=(uint16_t)((uint16_t)reply[1]<<8)|reply[2];
     if(g_radio.part!=0x4438U) { Fail(RF_WRONG_PART); goto failed; }
-    if(reply[0]!=0x11U || reply[7]!=0x03U) {
+    /* The square TX has 0x11/0x03; the round RX currently on the bench
+     * reports 0x22/0x06. Both identify the same 0x4438 family and must be
+     * allowed to proceed with the common B1-compatible profile. */
+    if(!((reply[0]==0x11U && reply[7]==0x03U) ||
+         (reply[0]==0x22U && reply[7]==0x06U))) {
         Fail(RF_UNSUPPORTED_REV); goto failed;
     }
     g_radio.stage=3;
