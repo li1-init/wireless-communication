@@ -10,8 +10,8 @@
       <TargetName>Test_RadioTX_Square</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>6180000::V6.18::ARMCLANG</pCCUsed>
-      <uAC6>1</uAC6>
+      <pCCUsed>5060000::V5.06::ARMCC</pCCUsed>
+      <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32L151C8</Device>
@@ -337,7 +337,7 @@
             <v6WtE>1</v6WtE>
             <v6Rtti>0</v6Rtti>
             <VariousControls>
-              <MiscControls>-std=c99 -Wall -Wextra</MiscControls>
+              <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER,STM32L1XX_MD</Define>
               <Undefine></Undefine>
               <IncludePath>..\User;..\CMSIS\Device\Include;..\CMSIS\Include;..\STM32L1xx_StdPeriph_Driver\inc</IncludePath>

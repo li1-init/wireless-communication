@@ -1,4 +1,4 @@
-param([string]$KeilPath = 'D:\keil\UV4\UV4.exe', [switch]$UseKeil)
+param([string]$KeilPath = 'D:\keil_666\UV4\UV4.exe', [switch]$UseKeil = $true)
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $KeilPath)) {
     throw "Keil not found: $KeilPath. Supply -KeilPath with the installed UV4.exe path."
@@ -12,6 +12,7 @@ if ($UseKeil) {
     if (-not $process.WaitForExit(15000)) { throw 'uVision did not exit within 15 seconds.' }
     $keilExit = $process.ExitCode
     if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log }
+    if ($keilExit -ne 0) { throw "Keil build failed; exit=$keilExit" }
 }
 if ($keilExit -ne 0) {
     # This machine has uVision 5.14, which cannot invoke the installed AC6 compiler.
