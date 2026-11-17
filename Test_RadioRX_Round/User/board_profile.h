@@ -1,3 +1,6 @@
+/* 文件说明：板型引脚表：指定当前板型实际使用的无线、按键及提示器件引脚。
+ * 注释范围：自编应用代码；厂商库与自动生成的射频配置不在本次补注释范围内。
+ */
 #ifndef BOARD_PROFILE_H
 #define BOARD_PROFILE_H
 /* Round receiver / 接收.pcb. User confirmed NO LEDs fitted, only rear buzzer.

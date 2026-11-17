@@ -1,15 +1,21 @@
+/* 文件说明：板级驱动：初始化时钟、GPIO、SPI、按键以及灯或蜂鸣器。
+ * 注释范围：自编应用代码；厂商库与自动生成的射频配置不在本次补注释范围内。
+ */
 #include "board.h"
+#include "spidma.h"
 
 uint32_t SystemCoreClock = 2097152UL;
 static volatile uint32_t ticks;
 
 /* Invoked before C runtime initialization. Keep reset MSI clock until main.
  * Do not use the legacy HSE/PLL startup: board documents disagree on HSE. */
+/** @brief 复位早期设置中断向量表；此时不能依赖尚未初始化的全局变量。 */
 void SystemInit(void)
 {
     SCB->VTOR = FLASH_BASE;
 }
 
+/** @brief 根据 RCC 当前配置更新系统时钟频率变量。 */
 void SystemCoreClockUpdate(void)
 {
     RCC_ClocksTypeDef clocks;
@@ -17,6 +23,7 @@ void SystemCoreClockUpdate(void)
     SystemCoreClock = clocks.HCLK_Frequency;
 }
 
+/** @brief 每毫秒递增时基，并推进灯或蜂鸣器的计时。 */
 void SysTick_Handler(void)
 {
     ++ticks;
@@ -24,13 +31,16 @@ void SysTick_Handler(void)
     Sound_Tick1ms();
 #endif
 }
+/** @brief 返回毫秒时基；计算时间差使用无符号减法以兼容回绕。 */
 uint32_t Board_Millis(void) { return ticks; }
+/** @brief 等待指定毫秒数；中断仍可执行，但主循环暂停。 */
 void Board_DelayMs(uint32_t ms)
 {
     uint32_t start = ticks;
     while ((uint32_t)(ticks - start) < ms) { }
 }
 
+/** @brief 统一配置一个 GPIO 端口上的指定引脚。 */
 static void PinInit(GPIO_TypeDef *port, uint16_t pins, GPIOMode_TypeDef mode,
                     GPIOPuPd_TypeDef pull)
 {
@@ -44,6 +54,7 @@ static void PinInit(GPIO_TypeDef *port, uint16_t pins, GPIOMode_TypeDef mode,
     GPIO_Init(port, &gpio);
 }
 
+/** @brief 配置内部 HSI 和总线时钟，带超时检查；成功返回 1。 */
 static uint8_t ClockInit(void)
 {
     uint32_t guard;
@@ -71,6 +82,7 @@ static uint8_t ClockInit(void)
 }
 
 #if BOARD_HAS_BUZZER
+/** @brief 初始化 TIM4_CH3 的蜂鸣器 PWM，初始输出关闭。 */
 static void BuzzerInit(void)
 {
     TIM_TimeBaseInitTypeDef timer;
@@ -103,6 +115,7 @@ static void BuzzerInit(void)
     TIM_Cmd(TIM4,ENABLE);
 }
 #endif
+/** @brief 直接控制蜂鸣器 PWM 占空比，实现发声或静音。 */
 void Board_SoundGate(uint8_t on)
 {
 #if BOARD_HAS_BUZZER
@@ -111,6 +124,7 @@ void Board_SoundGate(uint8_t on)
     (void)on;
 #endif
 }
+/** @brief 在短临界区内启动提示音，避免与 SysTick 同时修改声音状态。 */
 void Board_Sound(uint8_t event,uint8_t code)
 {
 #if BOARD_HAS_BUZZER
@@ -122,6 +136,7 @@ void Board_Sound(uint8_t event,uint8_t code)
     (void)event;(void)code;
 #endif
 }
+/** @brief 初始化当前板型的时钟、按键、提示器件和毫秒时基。 */
 uint8_t Board_Init(void)
 {
     uint8_t clock_ok;
@@ -151,6 +166,7 @@ uint8_t Board_Init(void)
     return clock_ok;
 }
 
+/** @brief 按位掩码设置方板 LED；未装灯的板型不执行硬件输出。 */
 void Board_Leds(uint8_t mask)
 {
 #if BOARD_HAS_LEDS
@@ -164,6 +180,7 @@ void Board_Leds(uint8_t mask)
 #endif
 }
 
+/** @brief 读取实际安装的按键，按 SWITCH/USER/CODE 返回对应位。 */
 uint8_t Board_Keys(void)
 {
     uint8_t result = 0U;
@@ -177,6 +194,7 @@ uint8_t Board_Keys(void)
     return result;
 }
 
+/** @brief 读取 MCU 唯一标识并生成当前协议使用的设备 ID。 */
 uint32_t Board_DeviceId(void)
 {
     /* STM32L1 medium-density 96-bit unique ID. Read only; no EEPROM writes. */
@@ -184,17 +202,20 @@ uint32_t Board_DeviceId(void)
     return uid[0] ^ uid[1] ^ uid[2];
 }
 
+/** @brief 控制无线芯片 SPI 片选，保留短暂建立时间。 */
 void Board_Nsel(uint8_t high)
 {
     GPIO_WriteBit(GPIOA, RADIO_NSEL_PIN, high ? Bit_SET : Bit_RESET);
     /* Minimum NSEL high/setup time, also at the faster test speed. */
     __NOP(); __NOP(); __NOP(); __NOP();
 }
+/** @brief 控制无线芯片关断引脚。 */
 void Board_Sdn(uint8_t high)
 {
     GPIO_WriteBit(GPIOA, RADIO_SDN_PIN, high ? Bit_SET : Bit_RESET);
 }
 
+/** @brief 配置 SPI1 时钟、极性和数据格式。 */
 void Board_RadioSpeed(uint8_t fast)
 {
     SPI_InitTypeDef spi;
@@ -215,6 +236,7 @@ void Board_RadioSpeed(uint8_t fast)
     SPI_Cmd(RADIO_SPI, ENABLE);
 }
 
+/** @brief 初始化无线 GPIO、SPI1 以及 SPI DMA 通道。 */
 void Board_RadioInit(void)
 {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
@@ -231,8 +253,10 @@ void Board_RadioInit(void)
     /* Poll over SPI; do not initialize auxiliary GPIOs using another board's
      * map. In particular RX PA4 is NSEL, and RX PB2 is radio GPIO1, not USER. */
     Board_RadioSpeed(0U);
+    SpiDma_Init();
 }
 
+/** @brief 等待指定 SPI 标志达到目标状态，超时返回失败。 */
 static uint8_t WaitSpi(uint16_t flag, FlagStatus desired)
 {
     uint32_t start = Board_Millis();
@@ -241,6 +265,7 @@ static uint8_t WaitSpi(uint16_t flag, FlagStatus desired)
     return 1U;
 }
 
+/** @brief 轮询发送和接收一个 SPI 字节，用于短命令和状态查询。 */
 uint8_t Board_SpiByte(uint8_t tx, uint8_t *rx)
 {
     if (!WaitSpi(SPI_I2S_FLAG_TXE, SET)) return 0U;
@@ -250,6 +275,7 @@ uint8_t Board_SpiByte(uint8_t tx, uint8_t *rx)
     return 1U;
 }
 
+/** @brief 等待 SPI 忙标志清除，确保最后一位真正发出。 */
 uint8_t Board_SpiFinish(void)
 {
     return WaitSpi(SPI_I2S_FLAG_BSY, RESET);

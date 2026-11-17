@@ -1,8 +1,12 @@
+/* 文件说明：圆板声音模块：按毫秒推进提示音，避免主循环等待时蜂鸣器持续鸣叫。
+ * 注释范围：自编应用代码；厂商库与自动生成的射频配置不在本次补注释范围内。
+ */
 #include "sound.h"
 static volatile uint16_t durations[20];
 static volatile uint16_t remaining;
 static volatile uint8_t index_now,count;
 
+/** @brief 设置提示音的发声和静音分段时长，替换当前音序列。 */
 void Sound_Play(uint8_t event,uint8_t code)
 {
     uint8_t i;
@@ -28,6 +32,7 @@ void Sound_Play(uint8_t event,uint8_t code)
     }
     if(count) { remaining=durations[0];Board_SoundGate(1); }
 }
+/** @brief 每毫秒推进提示音包络，到时关闭 PWM。 */
 void Sound_Tick1ms(void)
 {
     if(!remaining) return;

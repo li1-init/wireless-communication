@@ -418,6 +418,30 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>Application modules</GroupName>
+          <Files>
+            <File><FileName>app_rx.c</FileName><FileType>1</FileType><FilePath>..\User\app_rx.c</FilePath></File>
+            <File><FileName>app_rx.h</FileName><FileType>5</FileType><FilePath>..\User\app_rx.h</FilePath></File>
+            <File><FileName>key_input.c</FileName><FileType>1</FileType><FilePath>..\User\key_input.c</FilePath></File>
+            <File><FileName>key_input.h</FileName><FileType>5</FileType><FilePath>..\User\key_input.h</FilePath></File>
+            <File><FileName>pairing_rx.c</FileName><FileType>1</FileType><FilePath>..\User\pairing_rx.c</FilePath></File>
+            <File><FileName>pairing_rx.h</FileName><FileType>5</FileType><FilePath>..\User\pairing_rx.h</FilePath></File>
+            <File><FileName>pair_store.c</FileName><FileType>1</FileType><FilePath>..\User\pair_store.c</FilePath></File>
+            <File><FileName>pair_store.h</FileName><FileType>5</FileType><FilePath>..\User\pair_store.h</FilePath></File>
+            <File><FileName>nv_store.c</FileName><FileType>1</FileType><FilePath>..\User\nv_store.c</FilePath></File>
+            <File><FileName>nv_store.h</FileName><FileType>5</FileType><FilePath>..\User\nv_store.h</FilePath></File>
+            <File><FileName>spidma.c</FileName><FileType>1</FileType><FilePath>..\User\spidma.c</FilePath></File>
+            <File><FileName>spidma.h</FileName><FileType>5</FileType><FilePath>..\User\spidma.h</FilePath></File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>DMA and packet queues</GroupName>
+          <Files>
+            <File><FileName>packet_ring.c</FileName><FileType>1</FileType><FilePath>..\User\packet_ring.c</FilePath></File>
+            <File><FileName>packet_ring.h</FileName><FileType>5</FileType><FilePath>..\User\packet_ring.h</FilePath></File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>STM32 peripheral library</GroupName>
           <Files>
             <File>
