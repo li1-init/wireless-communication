@@ -1,1 +1,1 @@
-f9b13d7b030c3c0d0bcd0b84166a0d9f6cf957b0d13c02f80cf80bdccbeecd7b  MDK/Build/Test_RadioTX_Square.hex
+89fbf263f9bd17efcad5895e11e769677910ba8af9e161da00d35c8a3489aa29  MDK/Build/Test_RadioTX_Square.hex

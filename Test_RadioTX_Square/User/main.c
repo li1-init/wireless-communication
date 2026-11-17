@@ -27,6 +27,11 @@ typedef struct {
 volatile LinkAppStatus g_link;
 
 #if BOARD_IS_TX
+static uint8_t EepromBlankWord(uint32_t value)
+{
+    /* STM32L1 data EEPROM erases to zero. Also accept legacy FF-filled data. */
+    return (value==0U || value==0xFFFFFFFFUL) ? 1U : 0U;
+}
 static uint8_t SessionRecord(uint32_t address,uint32_t *value)
 {
     uint32_t count=*(volatile const uint32_t *)address;
@@ -47,12 +52,11 @@ static uint8_t NewSession(void)
         previous=b; address=first;
     } else {
         uint32_t legacy=*(volatile const uint32_t *)0x08080000UL;
-        if(*(volatile const uint32_t *)(first+4UL)!=0xFFFFFFFFUL ||
-           *(volatile const uint32_t *)second!=0xFFFFFFFFUL ||
-           *(volatile const uint32_t *)(second+4UL)!=0xFFFFFFFFUL)
+        if(!EepromBlankWord(*(volatile const uint32_t *)(first+4UL)) ||
+           !EepromBlankWord(*(volatile const uint32_t *)second) ||
+           !EepromBlankWord(*(volatile const uint32_t *)(second+4UL)))
             return 0U;
-        if(legacy!=0xFFFFFFFFUL) {
-            if(legacy==0U) return 0U;
+        if(!EepromBlankWord(legacy)) {
             previous=legacy;
         }
         address=first;
@@ -131,7 +135,7 @@ static uint8_t KeyEdges(uint32_t now)
 
 int main(void)
 {
-    uint8_t clock_ok,packet[LINK_PACKET_SIZE],i;
+    uint8_t clock_ok,session_ok=0U,packet[LINK_PACKET_SIZE],i;
     uint32_t now,last_retry;
 #if BOARD_IS_TX
 #define PAIR_TIMEOUT_MS 10000UL
@@ -147,13 +151,16 @@ int main(void)
     g_link.role=BOARD_IS_TX ? 1U : 2U;
     g_link.local_id=Board_DeviceId();
 #if BOARD_IS_TX
-    if(!NewSession()) clock_ok=0U; /* Never reuse a boot epoch. */
+    if(clock_ok) session_ok=NewSession(); /* Never reuse a boot epoch. */
 #endif
     StartupLights();
-    if(clock_ok) (void)InitializeRadio();
-    else {
+    if(!clock_ok) {
         g_radio.error=RF_CLOCK_ERROR;
         Board_Sound(SOUND_FAULT,RF_CLOCK_ERROR);
+    } else if(!session_ok) {
+        g_radio.error=RF_STORAGE_ERROR;
+    } else {
+        (void)InitializeRadio();
     }
     last_retry=Board_Millis();
     if(g_link.online) {
@@ -171,7 +178,7 @@ int main(void)
         now=Board_Millis();
         if(!g_link.online) {
             ErrorLights(now);
-            if(clock_ok && (uint32_t)(now-last_retry)>=5000UL) {
+            if(clock_ok && session_ok && (uint32_t)(now-last_retry)>=5000UL) {
                 Board_Leds(0);
                 (void)InitializeRadio();
                 last_retry=Board_Millis();

@@ -54,6 +54,8 @@ static uint8_t PairStore(uint8_t slot,uint32_t id)
 static void PairLoad(void)
 {
     uint8_t i;
+    uint32_t first_id=*(volatile const uint32_t *)PAIR_BASE;
+    uint32_t first_inverse=*(volatile const uint32_t *)(PAIR_BASE+4UL);
     for(i=0;i<PAIR_CAPACITY;++i) {
         uint32_t address=PAIR_BASE+(uint32_t)i*8UL;
         uint32_t id=*(volatile const uint32_t *)address;
@@ -64,7 +66,8 @@ static void PairLoad(void)
         }
     }
     /* Preserve the already deployed sender on the first firmware upgrade. */
-    if(pair_count==0U && *(volatile const uint32_t *)PAIR_BASE==0xFFFFFFFFUL)
+    if(pair_count==0U && (first_id==0U || first_id==0xFFFFFFFFUL) &&
+       (first_inverse==0U || first_inverse==0xFFFFFFFFUL))
         (void)PairStore(0U,LINK_EXPECTED_SENDER_ID);
 }
 static int PairFind(uint32_t id)

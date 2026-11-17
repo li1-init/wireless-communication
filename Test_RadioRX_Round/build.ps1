@@ -1,4 +1,4 @@
-param([string]$KeilPath = 'D:\keil_666\UV4\UV4.exe', [switch]$UseKeil = $true)
+param([string]$KeilPath = 'E:\keil\UV4\UV4.exe', [switch]$UseKeil = $true)
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $KeilPath)) {
     throw "Keil not found: $KeilPath. Supply -KeilPath with the installed UV4.exe path."
