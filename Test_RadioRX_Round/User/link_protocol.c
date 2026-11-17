@@ -23,11 +23,11 @@ static uint32_t Get32(const uint8_t *p)
 void Link_Encode(uint8_t packet[LINK_PACKET_SIZE],const LinkMessage *message)
 {
     uint16_t crc;
-    packet[0]=0x54U; packet[1]=0x52U; packet[2]=1U; packet[3]=message->command;
-    Put32(packet+4,message->sequence);
+    packet[0]=0x54U; packet[1]=0x52U; packet[2]=2U; packet[3]=message->command;
+    Put32(packet+4,message->session);
     Put32(packet+8,message->sender_id);
     packet[12]=message->keys;
-    packet[13]=0xA5U;
+    packet[13]=message->sequence;
     crc=Link_Crc16(packet,14U);
     packet[14]=(uint8_t)(crc>>8);
     packet[15]=(uint8_t)crc;
@@ -35,12 +35,13 @@ void Link_Encode(uint8_t packet[LINK_PACKET_SIZE],const LinkMessage *message)
 uint8_t Link_Decode(const uint8_t packet[LINK_PACKET_SIZE],LinkMessage *message)
 {
     uint16_t crc=Link_Crc16(packet,14U);
-    if(packet[0]!=0x54U || packet[1]!=0x52U || packet[2]!=1U || packet[3]>LINK_CODE ||
-       packet[12]>7U || packet[13]!=0xA5U ||
+    if(packet[0]!=0x54U || packet[1]!=0x52U || packet[2]!=2U || packet[3]>LINK_CODE ||
+       packet[12]>7U ||
        packet[14]!=(uint8_t)(crc>>8) || packet[15]!=(uint8_t)crc) return 0U;
-    message->sequence=Get32(packet+4);
+    message->session=Get32(packet+4);
     message->sender_id=Get32(packet+8);
     message->command=packet[3];
     message->keys=packet[12];
+    message->sequence=packet[13];
     return 1U;
 }

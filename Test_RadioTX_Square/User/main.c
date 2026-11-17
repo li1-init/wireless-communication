@@ -1,11 +1,13 @@
 #include "board.h"
 #include "radio_link.h"
 #include "link_protocol.h"
+#include "stm32l1xx_flash.h"
 
 typedef struct {
     uint32_t role; /* 1=TX square/rectangular, 2=RX round */
     uint32_t local_id;
     uint32_t sequence;
+    uint32_t session;
     uint32_t tx_failed;
     uint32_t rx_valid_count;
     uint32_t rx_rejected_count;
@@ -20,6 +22,25 @@ typedef struct {
     uint8_t reserved[3];
 } LinkAppStatus;
 volatile LinkAppStatus g_link;
+
+#if BOARD_IS_TX
+static uint8_t NewSession(void)
+{
+    const uint32_t address=0x08080000UL;
+    uint32_t previous=*(volatile const uint32_t *)address;
+    uint32_t next=(previous==0xFFFFFFFFUL) ? 1UL : previous+1UL;
+    if(next==0UL || next==0xFFFFFFFFUL) return 0U;
+    DATA_EEPROM_Unlock();
+    if(DATA_EEPROM_ProgramWord(address,next)!=FLASH_COMPLETE ||
+       *(volatile const uint32_t *)address!=next) {
+        DATA_EEPROM_Lock();
+        return 0U;
+    }
+    DATA_EEPROM_Lock();
+    g_link.session=next;
+    return 1U;
+}
+#endif
 
 static void StartupLights(void)
 {
@@ -92,6 +113,9 @@ int main(void)
     clock_ok=Board_Init();
     g_link.role=BOARD_IS_TX ? 1U : 2U;
     g_link.local_id=Board_DeviceId();
+#if BOARD_IS_TX
+    if(!NewSession()) clock_ok=0U; /* Never reuse a boot epoch. */
+#endif
     StartupLights();
     if(clock_ok) (void)InitializeRadio();
     else {
@@ -130,12 +154,14 @@ int main(void)
         if((uint32_t)(now-last_send)>=LINK_INTERVAL_MS ||
            (pending_keys && (uint32_t)(now-last_send)>=300UL)) {
             uint8_t command=LINK_BEACON;
+            if(Board_Keys()&4U) pending_keys|=4U;
             for(i=0;i<3U;++i) if(pending_keys&(1U<<i)) {
                 command=i+1U;
                 pending_keys &= (uint8_t)~(1U<<i);
                 break;
             }
-            message.sequence=++g_link.sequence;
+            message.session=g_link.session;
+            message.sequence=(uint8_t)(++g_link.sequence);
             message.sender_id=g_link.local_id;
             message.command=command;
             message.keys=Board_Keys();

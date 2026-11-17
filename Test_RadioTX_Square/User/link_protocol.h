@@ -4,15 +4,13 @@
 #define LINK_PACKET_SIZE 16U
 #define LINK_INTERVAL_MS 1000UL
 #define LINK_CHANNEL 0U
-/* Receiver learns one sender ID per power cycle and requires strictly
- * increasing sequence numbers before producing a success indication. */
-#define LINK_EXPECTED_SENDER_ID 3022750472UL
 enum { LINK_BEACON=0, LINK_SWITCH=1, LINK_USER=2, LINK_CODE=3 };
 typedef struct {
-    uint32_t sequence;
+    uint32_t session;
     uint32_t sender_id;
     uint8_t command;
     uint8_t keys;
+    uint8_t sequence;
 } LinkMessage;
 void Link_Encode(uint8_t packet[LINK_PACKET_SIZE],const LinkMessage *message);
 uint8_t Link_Decode(const uint8_t packet[LINK_PACKET_SIZE],LinkMessage *message);

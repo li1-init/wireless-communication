@@ -1,11 +1,13 @@
 #include "board.h"
 #include "radio_link.h"
 #include "link_protocol.h"
+#include "stm32l1xx_flash.h"
 
 typedef struct {
     uint32_t role; /* 1=TX square/rectangular, 2=RX round */
     uint32_t local_id;
     uint32_t sequence;
+    uint32_t session;
     uint32_t tx_failed;
     uint32_t rx_valid_count;
     uint32_t rx_rejected_count;
@@ -20,6 +22,68 @@ typedef struct {
     uint8_t reserved[3];
 } LinkAppStatus;
 volatile LinkAppStatus g_link;
+
+#if !BOARD_IS_TX
+#define PAIR_CAPACITY 8U
+#define PAIR_BASE 0x08080040UL
+static struct {
+    uint32_t id,session;
+    uint8_t sequence,seen;
+} paired[PAIR_CAPACITY];
+static uint8_t pair_count;
+static uint32_t pair_until;
+
+static uint8_t PairStore(uint8_t slot,uint32_t id)
+{
+    uint32_t address=PAIR_BASE+(uint32_t)slot*8UL;
+    DATA_EEPROM_Unlock();
+    if(DATA_EEPROM_ProgramWord(address,id)!=FLASH_COMPLETE ||
+       DATA_EEPROM_ProgramWord(address+4UL,~id)!=FLASH_COMPLETE ||
+       *(volatile const uint32_t *)address!=id ||
+       *(volatile const uint32_t *)(address+4UL)!=~id) {
+        DATA_EEPROM_Lock();
+        return 0U;
+    }
+    DATA_EEPROM_Lock();
+    paired[slot].id=id;
+    ++pair_count;
+    return 1U;
+}
+static void PairLoad(void)
+{
+    uint8_t i;
+    for(i=0;i<PAIR_CAPACITY;++i) {
+        uint32_t address=PAIR_BASE+(uint32_t)i*8UL;
+        uint32_t id=*(volatile const uint32_t *)address;
+        uint32_t inverse=*(volatile const uint32_t *)(address+4UL);
+        if(id!=0U && id!=0xFFFFFFFFUL && inverse==~id) {
+            paired[i].id=id;
+            ++pair_count;
+        }
+    }
+    /* Preserve the already deployed sender on the first firmware upgrade. */
+    if(pair_count==0U && *(volatile const uint32_t *)PAIR_BASE==0xFFFFFFFFUL)
+        (void)PairStore(0U,LINK_EXPECTED_SENDER_ID);
+}
+static int PairFind(uint32_t id)
+{
+    uint8_t i;
+    for(i=0;i<PAIR_CAPACITY;++i) if(paired[i].id==id) return i;
+    return -1;
+}
+static uint8_t PairAdd(uint32_t id)
+{
+    uint8_t i;
+    if(id==0U || id==0xFFFFFFFFUL) return 0U;
+    if(PairFind(id)>=0) return 1U;
+    if(pair_count>=PAIR_CAPACITY) return 0U;
+    for(i=0;i<PAIR_CAPACITY;++i)
+        if(paired[i].id==0U &&
+           *(volatile const uint32_t *)(PAIR_BASE+(uint32_t)i*8UL)==0xFFFFFFFFUL)
+            return PairStore(i,id);
+    return 0U;
+}
+#endif
 
 static void StartupLights(void)
 {
@@ -82,6 +146,10 @@ int main(void)
 {
     uint8_t clock_ok,packet[LINK_PACKET_SIZE],i;
     uint32_t now,last_retry;
+#if !BOARD_IS_TX
+    uint32_t pair_held=0U;
+    uint8_t pair_key_old=0U,pair_latched=0U;
+#endif
 #if BOARD_IS_TX
     uint32_t pulse_started=0;
     uint8_t pulse_active=0;
@@ -92,6 +160,9 @@ int main(void)
     clock_ok=Board_Init();
     g_link.role=BOARD_IS_TX ? 1U : 2U;
     g_link.local_id=Board_DeviceId();
+#if !BOARD_IS_TX
+    PairLoad();
+#endif
     StartupLights();
     if(clock_ok) (void)InitializeRadio();
     else {
@@ -163,6 +234,16 @@ int main(void)
         }
 #else
         {
+            uint8_t key=(Board_Keys()&2U)!=0U;
+            if(key && !pair_key_old) { pair_held=now; pair_latched=0U; }
+            if(key && !pair_latched && (uint32_t)(now-pair_held)>=2000UL) {
+                pair_until=now+15000UL;
+                pair_latched=1U;
+                Board_Sound(SOUND_BOOT,0U);
+            }
+            pair_key_old=key;
+        }
+        {
             int status=Radio_PollReceive(packet);
             if(status<0) {
                 Radio_Shutdown();
@@ -173,23 +254,27 @@ int main(void)
             } else if(status>0) {
                 for(i=0;i<LINK_PACKET_SIZE;++i) g_link.last_packet[i]=packet[i];
                 if(Link_Decode(packet,&message)) {
-                    /* Learn one sender per power cycle and accept only a
-                     * strictly newer sequence. This rejects stale FIFO data,
-                     * duplicate frames and other transmitters/noise. */
-                    if (message.sender_id != LINK_EXPECTED_SENDER_ID) {
+                    int slot=PairFind(message.sender_id);
+                    if(message.session==0U) {
                         ++g_link.rx_rejected_count;
-                    } else if (g_link.sender_locked == 0U) {
-                        g_link.sender_locked = 1U;
-                        g_link.last_sender_id = message.sender_id;
-                        g_link.last_sequence = message.sequence;
-                        ++g_link.rx_valid_count;
-                        g_link.last_command=message.command;
-                        g_link.last_keys=message.keys;
-                        g_link.last_valid_ms=Board_Millis();
-                        Board_Sound(SOUND_PACKET,0U);
-                    } else if (message.sender_id == g_link.last_sender_id &&
-                               (int32_t)(message.sequence - g_link.last_sequence) > 0) {
+                    } else if(message.command==LINK_CODE && (int32_t)(pair_until-now)>0) {
+                        if(PairAdd(message.sender_id)) {
+                            pair_until=0U;
+                            Board_Sound(SOUND_BOOT,0U);
+                        } else ++g_link.rx_rejected_count;
+                    } else if(slot>=0 && message.command!=LINK_CODE &&
+                              (!paired[slot].seen ||
+                               (int32_t)(message.session-paired[slot].session)>0 ||
+                               (message.session==paired[slot].session &&
+                                (uint8_t)(message.sequence-paired[slot].sequence)!=0U &&
+                                (uint8_t)(message.sequence-paired[slot].sequence)<128U))) {
+                        paired[slot].seen=1U;
+                        paired[slot].session=message.session;
+                        paired[slot].sequence=message.sequence;
+                        g_link.sender_locked=1U;
+                        g_link.last_sender_id=message.sender_id;
                         g_link.last_sequence=message.sequence;
+                        g_link.session=message.session;
                         ++g_link.rx_valid_count;
                         g_link.last_command=message.command;
                         g_link.last_keys=message.keys;
