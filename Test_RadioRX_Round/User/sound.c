@@ -11,6 +11,12 @@ void Sound_Play(uint8_t event,uint8_t code)
     if(event==SOUND_BOOT) { durations[0]=350;count=1; }
     else if(event==SOUND_PACKET) {
         durations[0]=120;count=1;
+    } else if(event==SOUND_PAIR_ENTER) {
+        durations[0]=2000;count=1;
+    } else if(event==SOUND_PAIR_OK) {
+        durations[0]=500;count=1;
+    } else if(event==SOUND_PAIR_EXIT) {
+        durations[0]=120;durations[1]=100;durations[2]=120;count=3;
     } else if(event==SOUND_FAULT) {
         if(code<1U||code>9U) code=4U;
         durations[0]=500;durations[1]=250;

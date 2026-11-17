@@ -20,19 +20,49 @@ typedef struct {
     uint8_t online;
     uint8_t sender_locked;
     uint8_t reserved[3];
+    uint32_t pair_success_count;
+    uint32_t pair_timeout_count;
+    uint8_t pair_mode;
 } LinkAppStatus;
 volatile LinkAppStatus g_link;
 
 #if BOARD_IS_TX
+static uint8_t SessionRecord(uint32_t address,uint32_t *value)
+{
+    uint32_t count=*(volatile const uint32_t *)address;
+    uint32_t inverse=*(volatile const uint32_t *)(address+4UL);
+    if(count==0U || count==0xFFFFFFFFUL || inverse!=~count) return 0U;
+    *value=count;
+    return 1U;
+}
 static uint8_t NewSession(void)
 {
-    const uint32_t address=0x08080000UL;
-    uint32_t previous=*(volatile const uint32_t *)address;
-    uint32_t next=(previous==0xFFFFFFFFUL) ? 1UL : previous+1UL;
-    if(next==0UL || next==0xFFFFFFFFUL) return 0U;
+    const uint32_t first=0x08080008UL,second=0x08080010UL;
+    uint32_t a=0U,b=0U,previous=0U,next,address;
+    uint8_t valid_a=SessionRecord(first,&a);
+    uint8_t valid_b=SessionRecord(second,&b);
+    if(valid_a && (!valid_b || (int32_t)(a-b)>0)) {
+        previous=a; address=second;
+    } else if(valid_b) {
+        previous=b; address=first;
+    } else {
+        uint32_t legacy=*(volatile const uint32_t *)0x08080000UL;
+        if(*(volatile const uint32_t *)(first+4UL)!=0xFFFFFFFFUL ||
+           *(volatile const uint32_t *)second!=0xFFFFFFFFUL ||
+           *(volatile const uint32_t *)(second+4UL)!=0xFFFFFFFFUL)
+            return 0U;
+        if(legacy!=0xFFFFFFFFUL) {
+            if(legacy==0U) return 0U;
+            previous=legacy;
+        }
+        address=first;
+    }
+    if(previous>=0xFFFFFFFEUL) return 0U;
+    next=previous+1UL;
     DATA_EEPROM_Unlock();
     if(DATA_EEPROM_ProgramWord(address,next)!=FLASH_COMPLETE ||
-       *(volatile const uint32_t *)address!=next) {
+       DATA_EEPROM_ProgramWord(address+4UL,~next)!=FLASH_COMPLETE ||
+       !SessionRecord(address,&a) || a!=next) {
         DATA_EEPROM_Lock();
         return 0U;
     }
@@ -104,10 +134,13 @@ int main(void)
     uint8_t clock_ok,packet[LINK_PACKET_SIZE],i;
     uint32_t now,last_retry;
 #if BOARD_IS_TX
+#define PAIR_TIMEOUT_MS 10000UL
+#define PAIR_RETRY_MS 400UL
     uint32_t pulse_started=0;
     uint8_t pulse_active=0;
     uint32_t last_send;
-    uint8_t pending_keys=0,manual=0;
+    uint32_t pair_started=0,pair_last_send=0;
+    uint8_t pending_keys=0,pair_active=0,pair_nonce=0;
 #endif
     LinkMessage message;
     clock_ok=Board_Init();
@@ -150,12 +183,68 @@ int main(void)
             continue;
         }
 #if BOARD_IS_TX
-        pending_keys |= KeyEdges(now);
+        {
+            uint8_t edges=KeyEdges(now);
+            if((edges&4U) && !pair_active) {
+                pair_active=1U;
+                pair_started=now;
+                pair_last_send=now-PAIR_RETRY_MS;
+                pair_nonce=(uint8_t)(++g_link.sequence);
+                pending_keys=0U;
+                pulse_active=0U;
+                g_link.pair_mode=1U;
+            } else pending_keys|=(uint8_t)(edges&3U);
+        }
+        if(pair_active) {
+            if((uint32_t)(now-pair_started)>=PAIR_TIMEOUT_MS) {
+                pair_active=0U;
+                g_link.pair_mode=0U;
+                ++g_link.pair_timeout_count;
+                Board_Leds(0U);
+                last_send=now-LINK_INTERVAL_MS;
+            } else {
+                int status=0;
+                Board_Leds(LED_MASK_WHITE);
+                if((uint32_t)(now-pair_last_send)>=PAIR_RETRY_MS) {
+                    message.type=LINK_PAIR_REQUEST;
+                    message.session=g_link.session;
+                    message.sender_id=g_link.local_id;
+                    message.payload=0U;
+                    message.sequence=pair_nonce;
+                    Link_Encode(packet,&message);
+                    for(i=0;i<LINK_PACKET_SIZE;++i) g_link.last_packet[i]=packet[i];
+                    g_link.last_command=LINK_PAIR_REQUEST;
+                    if(!Radio_Send(packet) || !Radio_StartReceive()) status=-1;
+                    pair_last_send=Board_Millis();
+                }
+                if(status==0) status=Radio_PollReceive(packet);
+                if(status<0) {
+                    Radio_Shutdown();
+                    ++g_link.tx_failed;
+                    g_link.online=0U;
+                    pair_active=0U;
+                    g_link.pair_mode=0U;
+                    last_retry=Board_Millis();
+                    Board_Leds(0U);
+                } else if(status>0 && Link_Decode(packet,&message) &&
+                          message.type==LINK_PAIR_ACK &&
+                          message.sender_id==g_link.local_id &&
+                          message.session==g_link.session &&
+                          message.sequence==pair_nonce) {
+                    pair_active=0U;
+                    g_link.pair_mode=0U;
+                    ++g_link.pair_success_count;
+                    Board_Leds(0U);
+                    last_send=Board_Millis()-LINK_INTERVAL_MS;
+                }
+                Board_DelayMs(1);
+                continue;
+            }
+        }
         if((uint32_t)(now-last_send)>=LINK_INTERVAL_MS ||
            (pending_keys && (uint32_t)(now-last_send)>=300UL)) {
             uint8_t command=LINK_BEACON;
-            if(Board_Keys()&4U) pending_keys|=4U;
-            for(i=0;i<3U;++i) if(pending_keys&(1U<<i)) {
+            for(i=0;i<2U;++i) if(pending_keys&(1U<<i)) {
                 command=i+1U;
                 pending_keys &= (uint8_t)~(1U<<i);
                 break;
@@ -163,16 +252,15 @@ int main(void)
             message.session=g_link.session;
             message.sequence=(uint8_t)(++g_link.sequence);
             message.sender_id=g_link.local_id;
-            message.command=command;
-            message.keys=Board_Keys();
+            message.type=LINK_DATA;
+            message.payload=(uint8_t)((command<<3U)|(Board_Keys()&7U));
             Link_Encode(packet,&message);
             for(i=0;i<LINK_PACKET_SIZE;++i) g_link.last_packet[i]=packet[i];
             g_link.last_command=command;
-            g_link.last_keys=message.keys;
+            g_link.last_keys=(uint8_t)(message.payload&7U);
             if(Radio_Send(packet)) {
                 pulse_started=Board_Millis();
                 pulse_active=1U;
-                manual=(command!=LINK_BEACON);
             } else {
                 ++g_link.tx_failed;
                 g_link.online=0;
@@ -184,51 +272,9 @@ int main(void)
         }
         if(g_link.online) {
             if(pulse_active && (uint32_t)(Board_Millis()-pulse_started)<120UL)
-                Board_Leds(LED_MASK_GREEN | (manual ? LED_MASK_WHITE : 0U));
+                Board_Leds(LED_MASK_GREEN);
             else { pulse_active=0; Board_Leds(0); }
         }
-#else
-        {
-            int status=Radio_PollReceive(packet);
-            if(status<0) {
-                Radio_Shutdown();
-                g_link.online=0;
-                last_retry=Board_Millis();
-                Board_Leds(0);
-                Board_Sound(SOUND_FAULT,g_radio.error);
-            } else if(status>0) {
-                for(i=0;i<LINK_PACKET_SIZE;++i) g_link.last_packet[i]=packet[i];
-                if(Link_Decode(packet,&message)) {
-                    /* Learn one sender per power cycle and accept only a
-                     * strictly newer sequence. This rejects stale FIFO data,
-                     * duplicate frames and other transmitters/noise. */
-                    if (message.sender_id != LINK_EXPECTED_SENDER_ID) {
-                        ++g_link.rx_rejected_count;
-                    } else if (g_link.sender_locked == 0U) {
-                        g_link.sender_locked = 1U;
-                        g_link.last_sender_id = message.sender_id;
-                        g_link.last_sequence = message.sequence;
-                        ++g_link.rx_valid_count;
-                        g_link.last_command=message.command;
-                        g_link.last_keys=message.keys;
-                        g_link.last_valid_ms=Board_Millis();
-                        Board_Sound(SOUND_PACKET,0U);
-                    } else if (message.sender_id == g_link.last_sender_id &&
-                               (int32_t)(message.sequence - g_link.last_sequence) > 0) {
-                        g_link.last_sequence=message.sequence;
-                        ++g_link.rx_valid_count;
-                        g_link.last_command=message.command;
-                        g_link.last_keys=message.keys;
-                        g_link.last_valid_ms=Board_Millis();
-                        Board_Sound(SOUND_PACKET,0U);
-                    } else {
-                        ++g_link.rx_rejected_count;
-                    }
-                } else ++g_link.rx_rejected_count;
-            }
-        }
-        /* No LEDs fitted. Sound envelope is advanced by SysTick, so polling
-         * continues during both short beeps and while the buzzer is silent. */
 #endif
         Board_DelayMs(1);
     }

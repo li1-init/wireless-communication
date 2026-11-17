@@ -6,6 +6,7 @@
 #define BOARD_HAS_BUZZER 0
 #define BOARD_HAS_WHITE 1
 #define BOARD_HAS_CODE 1
+#define BOARD_HAS_USER 1
 #define RADIO_NSEL_PIN GPIO_Pin_2
 #define LED_RED_PORT GPIOB
 #define LED_RED_PIN GPIO_Pin_3

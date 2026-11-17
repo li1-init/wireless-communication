@@ -20,6 +20,9 @@ typedef struct {
     uint8_t online;
     uint8_t sender_locked;
     uint8_t reserved[3];
+    uint32_t pair_success_count;
+    uint32_t pair_ack_count;
+    uint8_t pair_mode;
 } LinkAppStatus;
 volatile LinkAppStatus g_link;
 
@@ -31,7 +34,6 @@ static struct {
     uint8_t sequence,seen;
 } paired[PAIR_CAPACITY];
 static uint8_t pair_count;
-static uint32_t pair_until;
 
 static uint8_t PairStore(uint8_t slot,uint32_t id)
 {
@@ -78,8 +80,7 @@ static uint8_t PairAdd(uint32_t id)
     if(PairFind(id)>=0) return 1U;
     if(pair_count>=PAIR_CAPACITY) return 0U;
     for(i=0;i<PAIR_CAPACITY;++i)
-        if(paired[i].id==0U &&
-           *(volatile const uint32_t *)(PAIR_BASE+(uint32_t)i*8UL)==0xFFFFFFFFUL)
+        if(paired[i].id==0U)
             return PairStore(i,id);
     return 0U;
 }
@@ -147,8 +148,10 @@ int main(void)
     uint8_t clock_ok,packet[LINK_PACKET_SIZE],i;
     uint32_t now,last_retry;
 #if !BOARD_IS_TX
-    uint32_t pair_held=0U;
-    uint8_t pair_key_old=0U,pair_latched=0U;
+    uint32_t pair_held=0U,pair_changed=0U,pair_ready_at=0U;
+    uint32_t last_pair_id=0U,last_pair_session=0U;
+    uint8_t pair_key_raw=0U,pair_key_stable=0U,pair_latched=0U;
+    uint8_t last_pair_sequence=0U,pair_ack_seen=0U;
 #endif
 #if BOARD_IS_TX
     uint32_t pulse_started=0;
@@ -196,52 +199,22 @@ int main(void)
             Board_DelayMs(1);
             continue;
         }
-#if BOARD_IS_TX
-        pending_keys |= KeyEdges(now);
-        if((uint32_t)(now-last_send)>=LINK_INTERVAL_MS ||
-           (pending_keys && (uint32_t)(now-last_send)>=300UL)) {
-            uint8_t command=LINK_BEACON;
-            for(i=0;i<3U;++i) if(pending_keys&(1U<<i)) {
-                command=i+1U;
-                pending_keys &= (uint8_t)~(1U<<i);
-                break;
-            }
-            message.sequence=++g_link.sequence;
-            message.sender_id=g_link.local_id;
-            message.command=command;
-            message.keys=Board_Keys();
-            Link_Encode(packet,&message);
-            for(i=0;i<LINK_PACKET_SIZE;++i) g_link.last_packet[i]=packet[i];
-            g_link.last_command=command;
-            g_link.last_keys=message.keys;
-            if(Radio_Send(packet)) {
-                pulse_started=Board_Millis();
-                pulse_active=1U;
-                manual=(command!=LINK_BEACON);
-            } else {
-                ++g_link.tx_failed;
-                g_link.online=0;
-                last_retry=Board_Millis();
-                Board_Leds(0);
-                Board_Sound(SOUND_FAULT,g_radio.error);
-            }
-            last_send=Board_Millis();
-        }
-        if(g_link.online) {
-            if(pulse_active && (uint32_t)(Board_Millis()-pulse_started)<120UL)
-                Board_Leds(LED_MASK_GREEN | (manual ? LED_MASK_WHITE : 0U));
-            else { pulse_active=0; Board_Leds(0); }
-        }
-#else
         {
-            uint8_t key=(Board_Keys()&2U)!=0U;
-            if(key && !pair_key_old) { pair_held=now; pair_latched=0U; }
-            if(key && !pair_latched && (uint32_t)(now-pair_held)>=2000UL) {
-                pair_until=now+15000UL;
-                pair_latched=1U;
-                Board_Sound(SOUND_BOOT,0U);
+            uint8_t key=(Board_Keys()&1U)!=0U; /* PA0 SW KEY is fitted. */
+            if(key!=pair_key_raw) { pair_key_raw=key; pair_changed=now; }
+            if(key!=pair_key_stable && (uint32_t)(now-pair_changed)>=25UL) {
+                pair_key_stable=key;
+                if(key) { pair_held=now; pair_latched=0U; }
             }
-            pair_key_old=key;
+            if(pair_key_stable && !pair_latched &&
+               (uint32_t)(now-pair_held)>=2000UL) {
+                pair_latched=1U;
+                g_link.pair_mode=(uint8_t)!g_link.pair_mode;
+                if(g_link.pair_mode) {
+                    pair_ready_at=now+2000UL;
+                    Board_Sound(SOUND_PAIR_ENTER,0U);
+                } else Board_Sound(SOUND_PAIR_EXIT,0U);
+            }
         }
         {
             int status=Radio_PollReceive(packet);
@@ -255,19 +228,41 @@ int main(void)
                 for(i=0;i<LINK_PACKET_SIZE;++i) g_link.last_packet[i]=packet[i];
                 if(Link_Decode(packet,&message)) {
                     int slot=PairFind(message.sender_id);
-                    if(message.session==0U) {
-                        ++g_link.rx_rejected_count;
-                    } else if(message.command==LINK_CODE && (int32_t)(pair_until-now)>0) {
+                    if(message.type==LINK_PAIR_REQUEST && g_link.pair_mode &&
+                       (int32_t)(now-pair_ready_at)>=0) {
                         if(PairAdd(message.sender_id)) {
-                            pair_until=0U;
-                            Board_Sound(SOUND_BOOT,0U);
+                            uint8_t new_request=(uint8_t)(!pair_ack_seen ||
+                                last_pair_id!=message.sender_id ||
+                                last_pair_session!=message.session ||
+                                last_pair_sequence!=message.sequence);
+                            slot=PairFind(message.sender_id);
+                            if(new_request && slot>=0) paired[slot].seen=0U;
+                            message.type=LINK_PAIR_ACK;
+                            message.payload=LINK_PAIR_ACK_OK;
+                            Link_Encode(packet,&message);
+                            /* Let the square board switch from TX to RX first. */
+                            Board_DelayMs(30U);
+                            if(Radio_Send(packet) && Radio_StartReceive()) {
+                                ++g_link.pair_ack_count;
+                                if(new_request) {
+                                    last_pair_id=message.sender_id;
+                                    last_pair_session=message.session;
+                                    last_pair_sequence=message.sequence;
+                                    pair_ack_seen=1U;
+                                    ++g_link.pair_success_count;
+                                    Board_Sound(SOUND_PAIR_OK,0U);
+                                }
+                            } else {
+                                Radio_Shutdown();
+                                g_link.online=0U;
+                                last_retry=Board_Millis();
+                                Board_Sound(SOUND_FAULT,g_radio.error);
+                            }
                         } else ++g_link.rx_rejected_count;
-                    } else if(slot>=0 && message.command!=LINK_CODE &&
-                              (!paired[slot].seen ||
-                               (int32_t)(message.session-paired[slot].session)>0 ||
-                               (message.session==paired[slot].session &&
-                                (uint8_t)(message.sequence-paired[slot].sequence)!=0U &&
-                                (uint8_t)(message.sequence-paired[slot].sequence)<128U))) {
+                    } else if(message.type==LINK_DATA && !g_link.pair_mode && slot>=0 &&
+                              Link_IsNewer(message.session,message.sequence,
+                                           paired[slot].session,paired[slot].sequence,
+                                           paired[slot].seen)) {
                         paired[slot].seen=1U;
                         paired[slot].session=message.session;
                         paired[slot].sequence=message.sequence;
@@ -276,8 +271,8 @@ int main(void)
                         g_link.last_sequence=message.sequence;
                         g_link.session=message.session;
                         ++g_link.rx_valid_count;
-                        g_link.last_command=message.command;
-                        g_link.last_keys=message.keys;
+                        g_link.last_command=(uint8_t)(message.payload>>3);
+                        g_link.last_keys=(uint8_t)(message.payload&7U);
                         g_link.last_valid_ms=Board_Millis();
                         Board_Sound(SOUND_PACKET,0U);
                     } else {
@@ -288,7 +283,6 @@ int main(void)
         }
         /* No LEDs fitted. Sound envelope is advanced by SysTick, so polling
          * continues during both short beeps and while the buzzer is silent. */
-#endif
         Board_DelayMs(1);
     }
 }

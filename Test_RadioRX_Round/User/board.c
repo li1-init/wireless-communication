@@ -135,7 +135,9 @@ uint8_t Board_Init(void)
 #endif
 #endif
     PinInit(KEY_SWITCH_PORT, KEY_SWITCH_PIN, GPIO_Mode_IN, GPIO_PuPd_NOPULL);
+#if BOARD_HAS_USER
     PinInit(KEY_USER_PORT, KEY_USER_PIN, GPIO_Mode_IN, GPIO_PuPd_NOPULL);
+#endif
 #if BOARD_HAS_CODE
     PinInit(KEY_CODE_PORT, KEY_CODE_PIN, GPIO_Mode_IN, GPIO_PuPd_NOPULL);
 #endif
@@ -166,7 +168,9 @@ uint8_t Board_Keys(void)
 {
     uint8_t result = 0U;
     if (GPIO_ReadInputDataBit(KEY_SWITCH_PORT, KEY_SWITCH_PIN)) result |= 1U;
+#if BOARD_HAS_USER
     if (GPIO_ReadInputDataBit(KEY_USER_PORT, KEY_USER_PIN)) result |= 2U;
+#endif
 #if BOARD_HAS_CODE
     if (GPIO_ReadInputDataBit(KEY_CODE_PORT, KEY_CODE_PIN)) result |= 4U;
 #endif
