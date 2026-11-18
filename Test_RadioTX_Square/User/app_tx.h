@@ -12,6 +12,7 @@ typedef struct {
     uint8_t online,sender_locked,reserved[3];
     uint32_t pair_success_count,pair_timeout_count;
     uint8_t pair_mode;
+    uint32_t ack_timeout_count; /* 未收到普通数据确认；不属于硬件故障。 */
 } LinkAppStatus;
 extern volatile LinkAppStatus g_link;
 /** @brief 初始化方板、启动代号、按键、灯和无线模块。 */

@@ -50,7 +50,8 @@ void Indicators_TxPulse(uint32_t now) { TimedLight(now,120UL,LED_MASK_GREEN); }
 /** @brief 根据错误码输出循环红灯闪烁次数。 */
 void Indicators_Fault(uint32_t now,uint8_t error)
 {
-    uint32_t code=error ? error : 4U;
+    uint32_t code=error;
+    if(!code) { Indicators_Stop(); return; }
     uint32_t phase=now%(code*300UL+1200UL);
     timed=0U;
     Board_Leds((phase<code*300UL && phase%300UL<120UL)?LED_MASK_RED:0U);

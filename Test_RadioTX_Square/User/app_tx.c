@@ -67,22 +67,23 @@ static void PairPoll(void)
         last_send=Board_Millis()-LINK_INTERVAL_MS;
     } else if(PairingTx_Expire(Board_Millis())) PairTimeout();
 }
-/** @brief 发送数据后切换接收，在限定时间内等待 ID、启动代号、token 匹配的确认。 */
-static uint8_t SendDataAndWaitAck(const uint8_t *packet,const LinkMessage *sent)
+/** @brief 等待匹配确认：1=收到 ACK，0=超时灯灭，-1=底层硬件错误。 */
+static int SendDataAndWaitAck(const uint8_t *packet,const LinkMessage *sent)
 {
     uint32_t started=Board_Millis();
     uint8_t reply_packet[LINK_PACKET_SIZE];
     LinkMessage reply;
     int status;
-    if(!Radio_Send(packet) || !Radio_StartReceive()) return 0U;
+    if(!Radio_Send(packet) || !Radio_StartReceive()) return -1;
     do {
         status=Radio_PollReceive(reply_packet);
-        if(status<0) return 0U;
+        if(status<0) return -1;
         if(status>0 && Link_Decode(reply_packet,&reply) &&
            reply.type==LINK_DATA_ACK && reply.payload==LINK_PAIR_ACK_OK &&
            reply.sender_id==sent->sender_id && reply.session==sent->session &&
            reply.token==sent->token) return 1U;
     } while((uint32_t)(Board_Millis()-started)<180UL);
+    /* 没收到确认只表示本次未确认，不能关闭无线或进入红灯故障。 */
     return 0U;
 }
 /** @brief 初始化方板、启动代号、按键、灯和无线模块。 */
@@ -110,6 +111,7 @@ void AppTx_Poll(void)
     uint32_t now=Board_Millis(),session;
     uint8_t edges,command=LINK_BEACON,packet[LINK_PACKET_SIZE],i;
     LinkMessage message;
+    int ack_result;
     Keys_Update(now,Board_Keys());
     edges=Keys_Pressed();
     if(!g_link.online) {
@@ -150,7 +152,13 @@ void AppTx_Poll(void)
     Remember(packet);
     g_link.last_command=command;
     g_link.last_keys=(uint8_t)(message.payload&7U);
-    if(SendDataAndWaitAck(packet,&message)) Indicators_TxPulse(Board_Millis());
-    else Fault();
+    Indicators_Stop(); /* 等待确认期间不显示上一次成功灯。 */
+    ack_result=SendDataAndWaitAck(packet,&message);
+    if(ack_result>0) Indicators_TxPulse(Board_Millis());
+    else if(ack_result<0) Fault();
+    else {
+        ++g_link.ack_timeout_count;
+        Indicators_Stop();
+    }
     last_send=Board_Millis();
 }
