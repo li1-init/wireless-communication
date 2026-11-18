@@ -82,8 +82,7 @@ void AppRx_Poll(void)
                 ack.type=LINK_DATA_ACK;
                 ack.payload=LINK_PAIR_ACK_OK;
                 Link_Encode(packet,&ack);
-                (void)Radio_Send(packet);
-                (void)Radio_StartReceive();
+                if(!Radio_Send(packet) || !Radio_StartReceive()) { Fault(); return; }
             }
         } else ++g_link.rx_rejected_count;
     }

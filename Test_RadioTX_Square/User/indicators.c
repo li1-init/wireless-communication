@@ -45,8 +45,8 @@ void Indicators_PairStart(uint32_t now)
 {
     TimedLight(now,PAIR_TX_TIMEOUT_MS,LED_MASK_WHITE);
 }
-/** @brief 点亮短暂绿灯，应用应在匹配接收确认后调用。 */
-void Indicators_TxPulse(uint32_t now) { TimedLight(now,120UL,LED_MASK_GREEN); }
+/** @brief 收到匹配的数据确认后点亮绿灯 1 秒。 */
+void Indicators_TxPulse(uint32_t now) { TimedLight(now,1000UL,LED_MASK_GREEN); }
 /** @brief 根据错误码输出循环红灯闪烁次数。 */
 void Indicators_Fault(uint32_t now,uint8_t error)
 {

@@ -136,8 +136,8 @@ void AppTx_Poll(void)
     }
     if(PairingTx_Active()) { PairPoll(); return; }
     pending_keys|=(uint8_t)(edges&(KEY_SW_MASK|KEY_USER_MASK));
-    if((uint32_t)(now-last_send)<LINK_INTERVAL_MS &&
-       (!pending_keys || (uint32_t)(now-last_send)<300UL)) return;
+    if(!pending_keys) return;
+    if((uint32_t)(now-last_send)<300UL) return;
     for(i=0;i<2U;++i) if(pending_keys&(1U<<i)) {
         command=(uint8_t)(i+1U);
         pending_keys&=(uint8_t)~(1U<<i);
@@ -152,7 +152,7 @@ void AppTx_Poll(void)
     Remember(packet);
     g_link.last_command=command;
     g_link.last_keys=(uint8_t)(message.payload&7U);
-    Indicators_Stop(); /* 等待确认期间不显示上一次成功灯。 */
+    Indicators_Stop();
     ack_result=SendDataAndWaitAck(packet,&message);
     if(ack_result>0) Indicators_TxPulse(Board_Millis());
     else if(ack_result<0) Fault();

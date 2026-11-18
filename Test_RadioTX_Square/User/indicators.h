@@ -12,7 +12,7 @@ void Indicators_Ready(void);
 void Indicators_PairStart(uint32_t now);
 /** @brief 取消灯控计时并关闭 LED。 */
 void Indicators_Stop(void);
-/** @brief 点亮短暂绿灯，应用应在匹配接收确认后调用。 */
+/** @brief 收到匹配的数据确认后点亮绿灯 1 秒。 */
 void Indicators_TxPulse(uint32_t now);
 /** @brief 根据错误码输出循环红灯闪烁次数。 */
 void Indicators_Fault(uint32_t now,uint8_t error);
