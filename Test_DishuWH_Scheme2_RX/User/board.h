@@ -6,7 +6,6 @@
 #include "stm32l1xx.h"
 #include "radio_port.h"
 #include "board_profile.h"
-#include "board_config.h"
 #include "sound.h"
 
 #define RADIO_SPI SPI1
@@ -18,12 +17,6 @@
 #define LED_MASK_GREEN 2U
 #define LED_MASK_WHITE 4U
 
-#if DISHU_COLOR_LED_HIGH_TEST
-/** @brief 配置红、蓝、绿、黄、白五颗彩色灯对应的 GPIO。 */
-void Board_ColorLedHighTestInit(void);
-/** @brief 同时设置五颗彩色灯对应 GPIO 的高低电平。 */
-void Board_ColorLedHighTestSet(uint8_t high);
-#endif
 /** @brief 初始化当前板型的时钟、按键、提示器件和毫秒时基。 */
 uint8_t Board_Init(void);
 /** @brief 按位掩码设置方板 LED；未装灯的板型不执行硬件输出。 */
