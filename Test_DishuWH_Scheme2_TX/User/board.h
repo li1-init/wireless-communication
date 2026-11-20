@@ -16,6 +16,8 @@
 #define LED_MASK_RED 1U
 #define LED_MASK_GREEN 2U
 #define LED_MASK_WHITE 4U
+#define LED_MASK_BLUE 8U
+#define LED_MASK_YELLOW 16U
 
 /** @brief 初始化当前板型的时钟、按键、提示器件和毫秒时基。 */
 uint8_t Board_Init(void);

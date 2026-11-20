@@ -4,6 +4,7 @@
 #include "../User/app_fast.h"
 #include "../User/fast_pair.h"
 #include "../User/fast_peer.h"
+#include "../User/key_input.h"
 #include "../User/radio_link.h"
 volatile RadioLinkStatus g_radio;
 static uint8_t memory[4096],incoming[28],has_packet,raw,leds,active;
@@ -30,6 +31,7 @@ void Indicators_Stop(void){leds=0;}
 void Indicators_PairStart(uint32_t t){(void)t;leds=4;}
 void Indicators_PairSuccess(uint32_t t){(void)t;leds=4;}
 void Indicators_RxPulse(uint32_t t){(void)t;leds=2;}
+void Indicators_KeyAck(uint32_t t,uint8_t key){(void)t;leds=(uint8_t)(0x80U|key);}
 void Indicators_Fault(uint32_t t,uint8_t e){(void)t;(void)e;}
 void FastPair_Init(uint8_t t,uint32_t id){(void)t;(void)id;active=0;}
 void FastPair_Begin(uint32_t t,uint32_t s){(void)t;(void)s;assert(leds==4);++begins;active=1;}
@@ -49,7 +51,13 @@ int main(void)
     m=outgoing;m.type=LINK_DATA_ACK;m.sender_id=222;m.receiver_id=111;m.payload=1;
     bad=m;bad.sender_id=333;Inject(&bad);assert(!g_link.ack_count&&leds==0);
     bad=m;bad.receiver_id=444;Inject(&bad);assert(!g_link.ack_count);
-    Inject(&m);assert(g_link.ack_count==1&&leds==2);
+    Inject(&m);assert(g_link.ack_count==1&&leds==0x81);
+    Poll(150,0);Poll(175,0);
+    Poll(200,KEY_W1_MASK);Poll(225,KEY_W1_MASK);assert(sends==2&&leds==0);
+    m=outgoing;m.type=LINK_DATA_ACK;m.sender_id=222;m.receiver_id=111;m.payload=1;
+    bad=m;bad.token++;Inject(&bad);assert(g_link.ack_count==1&&leds==0);
+    Inject(&m);assert(g_link.ack_count==2&&leds==0x88);
+    Poll(250,0);Poll(275,0);
 #else
     m.type=LINK_DATA;m.sender_id=111;m.receiver_id=222;m.binding=9;
     m.session=7;m.token=1;m.payload=8;

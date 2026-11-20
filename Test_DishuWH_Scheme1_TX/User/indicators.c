@@ -3,6 +3,7 @@
  */
 #include "indicators.h"
 #include "board.h"
+#include "key_input.h"
 static volatile uint8_t timed,pair_active,pair_flash,flash_steps;
 static volatile uint32_t started,duration,pair_started;
 /** @brief 在临界区内设置 LED 及自动熄灭计时。 */
@@ -72,6 +73,21 @@ void Indicators_PairSuccess(uint32_t now)
 void Indicators_RxPulse(uint32_t now)
 {
     TimedLight(now,TX_SUCCESS_LED_MS,LED_MASK_RED|LED_MASK_GREEN|LED_MASK_WHITE);
+}
+/** @brief 将 W1-W5 一一映射到红、蓝、绿、黄、白反馈灯。 */
+uint8_t Indicators_KeyLedMask(uint8_t key_mask)
+{
+    if(key_mask&KEY_W1_MASK)return LED_MASK_RED;
+    if(key_mask&KEY_W2_MASK)return LED_MASK_BLUE;
+    if(key_mask&KEY_W3_MASK)return LED_MASK_GREEN;
+    if(key_mask&KEY_W4_MASK)return LED_MASK_YELLOW;
+    if(key_mask&KEY_W5_MASK)return LED_MASK_WHITE;
+    return LED_MASK_RED|LED_MASK_GREEN|LED_MASK_WHITE;
+}
+/** @brief ACK 匹配后仅点亮本次按键对应的灯 100 毫秒。 */
+void Indicators_KeyAck(uint32_t now,uint8_t key_mask)
+{
+    TimedLight(now,ACK_LED_MS,Indicators_KeyLedMask(key_mask));
 }
 /** @brief 根据错误码输出循环红灯闪烁。 */
 void Indicators_Fault(uint32_t now,uint8_t error)

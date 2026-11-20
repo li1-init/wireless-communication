@@ -150,6 +150,8 @@ uint8_t Board_Init(void)
 #if BOARD_HAS_WHITE
     PinInit(LED_WHITE_PORT, LED_WHITE_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
 #endif
+    PinInit(LED_BLUE_PORT, LED_BLUE_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
+    PinInit(LED_YELLOW_PORT, LED_YELLOW_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
 #endif
     PinInit(KEY_SWITCH_PORT, KEY_SWITCH_PIN, GPIO_Mode_IN, GPIO_PuPd_NOPULL);
 #if BOARD_HAS_USER
@@ -184,6 +186,8 @@ void Board_Leds(uint8_t mask)
 #if BOARD_HAS_WHITE
     GPIO_WriteBit(LED_WHITE_PORT, LED_WHITE_PIN, (mask & LED_MASK_WHITE) ? Bit_SET : Bit_RESET);
 #endif
+    GPIO_WriteBit(LED_BLUE_PORT, LED_BLUE_PIN, (mask & LED_MASK_BLUE) ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(LED_YELLOW_PORT, LED_YELLOW_PIN, (mask & LED_MASK_YELLOW) ? Bit_SET : Bit_RESET);
 #else
     (void)mask;
 #endif

@@ -29,3 +29,9 @@ foreach($role in @(0,1)){
  & $exe
  if($LASTEXITCODE){throw 'App tests failed'}
 }
+$exe=Join-Path $PSScriptRoot 'test_led_map.exe'
+$stub=Join-Path $PSScriptRoot 'board_stub.h'
+& $Compiler -std=c99 -O2 -Wall -Wextra -Werror -include $stub (Join-Path $PSScriptRoot 'test_led_map.c') (Join-Path $user 'indicators.c') -o $exe
+if($LASTEXITCODE){throw 'LED map compilation failed'}
+& $exe
+if($LASTEXITCODE){throw 'LED map tests failed'}

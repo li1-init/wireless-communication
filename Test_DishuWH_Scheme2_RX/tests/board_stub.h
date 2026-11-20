@@ -5,6 +5,8 @@
 #define LED_MASK_RED 1U
 #define LED_MASK_GREEN 2U
 #define LED_MASK_WHITE 4U
+#define LED_MASK_BLUE 8U
+#define LED_MASK_YELLOW 16U
 static inline uint32_t __get_PRIMASK(void){return 0;}
 static inline void __disable_irq(void){}
 static inline void __set_PRIMASK(uint32_t v){(void)v;}

@@ -5,6 +5,7 @@
 #define INDICATORS_H
 #include <stdint.h>
 #define TX_SUCCESS_LED_MS 100UL
+#define ACK_LED_MS 100UL
 /** @brief 依次显示三个启动灯，时序与原方板发送工程一致。 */
 void Indicators_Startup(void);
 /** @brief 显示无线初始化完成的绿灯提示。 */
@@ -17,6 +18,10 @@ void Indicators_PairStart(uint32_t now);
 void Indicators_PairSuccess(uint32_t now);
 /** @brief 收到有效数据后绿灯亮 1 秒。 */
 void Indicators_RxPulse(uint32_t now);
+/** @brief 返回按键对应的彩色反馈灯掩码；普通键回退到原反馈灯组。 */
+uint8_t Indicators_KeyLedMask(uint8_t key_mask);
+/** @brief ACK 匹配后点亮对应彩色灯 100 毫秒。 */
+void Indicators_KeyAck(uint32_t now,uint8_t key_mask);
 /** @brief 根据错误码输出循环红灯闪烁。 */
 void Indicators_Fault(uint32_t now,uint8_t error);
 /** @brief 在 SysTick 中推进灯效计时。 */

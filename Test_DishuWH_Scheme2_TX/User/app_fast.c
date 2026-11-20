@@ -8,7 +8,7 @@
 #include "fast_pair.h"
 #include "fast_peer.h"
 volatile FastStatus g_link;
-static uint8_t clock_ok,waiting;
+static uint8_t clock_ok,waiting,sent_key;
 static uint32_t last_retry,rx_session,rx_token;
 #if BOARD_IS_TX
 static uint8_t pending_keys;
@@ -81,6 +81,7 @@ void AppFast_Poll(void)
             waiting=0;
 #if BOARD_IS_TX
             pending_keys=0;
+            sent_key=0;
 #endif
             FastPair_Begin(Board_Millis(),epoch);g_link.pair_mode=1;
         }
@@ -107,7 +108,7 @@ void AppFast_Poll(void)
             ++g_link.rx_rejected_count;
         else if(BOARD_IS_TX) {
             if(waiting&&m.type==LINK_DATA_ACK&&m.session==sent.session&&m.token==sent.token) {
-                waiting=0;++g_link.ack_count;Indicators_RxPulse(now);
+                waiting=0;++g_link.ack_count;Indicators_KeyAck(now,sent_key);
             } else ++g_link.rx_rejected_count;
         } else if(m.type==LINK_DATA) {
             uint8_t fresh=(uint8_t)(!rx_seen||m.session>rx_session||
@@ -149,22 +150,17 @@ void AppFast_Poll(void)
     sent.binding=FastPeer_Binding();sent.session=g_link.session;sent.token=++g_link.sequence;
     {
         uint8_t command=1U;
-        if(pending_keys&KEY_USER_MASK) command=2U;
-        else if(pending_keys&KEY_W1_MASK) command=3U;
-        else if(pending_keys&KEY_W2_MASK) command=4U;
-        else if(pending_keys&KEY_W3_MASK) command=5U;
-        else if(pending_keys&KEY_W4_MASK) command=6U;
-        else if(pending_keys&KEY_W5_MASK) command=7U;
+        sent_key=KEY_SW_MASK;
+        if(pending_keys&KEY_USER_MASK) {sent_key=KEY_USER_MASK;command=2U;}
+        else if(pending_keys&KEY_W1_MASK) {sent_key=KEY_W1_MASK;command=3U;}
+        else if(pending_keys&KEY_W2_MASK) {sent_key=KEY_W2_MASK;command=4U;}
+        else if(pending_keys&KEY_W3_MASK) {sent_key=KEY_W3_MASK;command=5U;}
+        else if(pending_keys&KEY_W4_MASK) {sent_key=KEY_W4_MASK;command=6U;}
+        else if(pending_keys&KEY_W5_MASK) {sent_key=KEY_W5_MASK;command=7U;}
         sent.payload=(uint8_t)(command<<3);
     }
     sent.payload|=(uint8_t)(Board_Keys()&7U);
-    if(pending_keys&KEY_SW_MASK) pending_keys&=(uint8_t)~KEY_SW_MASK;
-    else if(pending_keys&KEY_USER_MASK) pending_keys&=(uint8_t)~KEY_USER_MASK;
-    else if(pending_keys&KEY_W1_MASK) pending_keys&=(uint8_t)~KEY_W1_MASK;
-    else if(pending_keys&KEY_W2_MASK) pending_keys&=(uint8_t)~KEY_W2_MASK;
-    else if(pending_keys&KEY_W3_MASK) pending_keys&=(uint8_t)~KEY_W3_MASK;
-    else if(pending_keys&KEY_W4_MASK) pending_keys&=(uint8_t)~KEY_W4_MASK;
-    else if(pending_keys&KEY_W5_MASK) pending_keys&=(uint8_t)~KEY_W5_MASK;
+    pending_keys&=(uint8_t)~sent_key;
     Indicators_Stop();
     if(Send(&sent)){sent_at=Board_Millis();waiting=1;}
 #endif
