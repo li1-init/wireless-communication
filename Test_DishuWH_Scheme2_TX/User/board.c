@@ -158,11 +158,13 @@ uint8_t Board_Init(void)
 #if BOARD_HAS_CODE
     PinInit(KEY_CODE_PORT, KEY_CODE_PIN, GPIO_Mode_IN, GPIO_PuPd_NOPULL);
 #endif
-    PinInit(KEY_W1_PORT, KEY_W1_PIN, GPIO_Mode_IN, GPIO_PuPd_UP);
-    PinInit(KEY_W2_PORT, KEY_W2_PIN, GPIO_Mode_IN, GPIO_PuPd_UP);
-    PinInit(KEY_W3_PORT, KEY_W3_PIN, GPIO_Mode_IN, GPIO_PuPd_UP);
-    PinInit(KEY_W4_PORT, KEY_W4_PIN, GPIO_Mode_IN, GPIO_PuPd_UP);
-    PinInit(KEY_W5_PORT, KEY_W5_PIN, GPIO_Mode_IN, GPIO_PuPd_UP);
+    /* W1-W5 idle at 0 V and become valid when externally pulled to 3.3 V.
+     * Input mode avoids a push-pull conflict with the 3.3 V test/button short. */
+    PinInit(KEY_W1_PORT, KEY_W1_PIN, GPIO_Mode_IN, GPIO_PuPd_DOWN);
+    PinInit(KEY_W2_PORT, KEY_W2_PIN, GPIO_Mode_IN, GPIO_PuPd_DOWN);
+    PinInit(KEY_W3_PORT, KEY_W3_PIN, GPIO_Mode_IN, GPIO_PuPd_DOWN);
+    PinInit(KEY_W4_PORT, KEY_W4_PIN, GPIO_Mode_IN, GPIO_PuPd_DOWN);
+    PinInit(KEY_W5_PORT, KEY_W5_PIN, GPIO_Mode_IN, GPIO_PuPd_DOWN);
     /* PA13/PA14 remain SWD. Only this board profile's fitted indicators run. */
     clock_ok = ClockInit();
     SystemCoreClockUpdate();
@@ -198,11 +200,11 @@ uint8_t Board_Keys(void)
 #if BOARD_HAS_CODE
     if (GPIO_ReadInputDataBit(KEY_CODE_PORT, KEY_CODE_PIN)) result |= 4U;
 #endif
-    if (!GPIO_ReadInputDataBit(KEY_W1_PORT, KEY_W1_PIN)) result |= 8U;
-    if (!GPIO_ReadInputDataBit(KEY_W2_PORT, KEY_W2_PIN)) result |= 16U;
-    if (!GPIO_ReadInputDataBit(KEY_W3_PORT, KEY_W3_PIN)) result |= 32U;
-    if (!GPIO_ReadInputDataBit(KEY_W4_PORT, KEY_W4_PIN)) result |= 64U;
-    if (!GPIO_ReadInputDataBit(KEY_W5_PORT, KEY_W5_PIN)) result |= 128U;
+    if (GPIO_ReadInputDataBit(KEY_W1_PORT, KEY_W1_PIN)) result |= 8U;
+    if (GPIO_ReadInputDataBit(KEY_W2_PORT, KEY_W2_PIN)) result |= 16U;
+    if (GPIO_ReadInputDataBit(KEY_W3_PORT, KEY_W3_PIN)) result |= 32U;
+    if (GPIO_ReadInputDataBit(KEY_W4_PORT, KEY_W4_PIN)) result |= 64U;
+    if (GPIO_ReadInputDataBit(KEY_W5_PORT, KEY_W5_PIN)) result |= 128U;
     return result;
 }
 

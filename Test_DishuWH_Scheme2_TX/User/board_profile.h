@@ -23,6 +23,7 @@
 #define KEY_USER_PIN GPIO_Pin_2
 #define KEY_CODE_PORT GPIOB
 #define KEY_CODE_PIN GPIO_Pin_1
+/* W1-W5 are LED/trigger nets: internal pull-down, active at 3.3 V. */
 #define KEY_W1_PORT GPIOB
 #define KEY_W1_PIN GPIO_Pin_9
 #define KEY_W2_PORT GPIOB
