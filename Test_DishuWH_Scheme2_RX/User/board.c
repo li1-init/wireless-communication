@@ -56,6 +56,39 @@ static void PinInit(GPIO_TypeDef *port, uint16_t pins, GPIOMode_TypeDef mode,
     GPIO_Init(port, &gpio);
 }
 
+#if DISHU_COLOR_LED_HIGH_TEST
+/** @brief 同时设置五颗彩色灯对应 GPIO 的高低电平。 */
+void Board_ColorLedHighTestSet(uint8_t high)
+{
+    if (high) {
+        GPIO_SetBits(GPIOB, LED_RED_PIN);
+        GPIO_SetBits(GPIOA, LED_BLUE_PIN | LED_GREEN_PIN |
+                            LED_YELLOW_PIN | LED_WHITE_PIN);
+    } else {
+        GPIO_ResetBits(GPIOB, LED_RED_PIN);
+        GPIO_ResetBits(GPIOA, LED_BLUE_PIN | LED_GREEN_PIN |
+                              LED_YELLOW_PIN | LED_WHITE_PIN);
+    }
+}
+
+/** @brief 红/蓝/绿/黄/白五路彩色灯测试：初始化对应 MCU 推挽输出。 */
+void Board_ColorLedHighTestInit(void)
+{
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB, ENABLE);
+
+    /* Preload ODR high before switching the pins to output mode. */
+    GPIO_SetBits(GPIOB, LED_RED_PIN);
+    GPIO_SetBits(GPIOA, LED_BLUE_PIN | LED_GREEN_PIN |
+                        LED_YELLOW_PIN | LED_WHITE_PIN);
+    PinInit(LED_RED_PORT, LED_RED_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
+    PinInit(LED_BLUE_PORT, LED_BLUE_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
+    PinInit(LED_GREEN_PORT, LED_GREEN_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
+    PinInit(LED_YELLOW_PORT, LED_YELLOW_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
+    PinInit(LED_WHITE_PORT, LED_WHITE_PIN, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
+    Board_ColorLedHighTestSet(1U);
+}
+#endif
+
 /** @brief 配置内部 HSI 和总线时钟，带超时检查；成功返回 1。 */
 static uint8_t ClockInit(void)
 {
