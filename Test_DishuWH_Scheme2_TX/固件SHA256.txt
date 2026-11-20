@@ -1,0 +1,1 @@
+96655bb7fb9c740cb9c57ba259774cec3e9862cf17e17617366401d0136635f3  MDK/Build/Test_RadioTX_Fast_Square.hex
