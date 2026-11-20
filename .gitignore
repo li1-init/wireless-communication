@@ -27,6 +27,16 @@
 !Test_RadioRX_Round/MDK/*.uvoptx
 !Test_RadioRX_Round/MDK/Build/*.hex
 
+# Standalone five-color LED GPIO test
+!Test_ColorLED_Slow_Blink/
+!Test_ColorLED_Slow_Blink/User/**
+!Test_ColorLED_Slow_Blink/MDK/*.uvprojx
+!Test_ColorLED_Slow_Blink/MDK/*.uvoptx
+!Test_ColorLED_Slow_Blink/MDK/*.sct
+!Test_ColorLED_Slow_Blink/MDK/*.s
+!Test_ColorLED_Slow_Blink/README.md
+!Test_ColorLED_Slow_Blink/build.ps1
+
 # Editor/local backups are not source history
 *.bak
 
