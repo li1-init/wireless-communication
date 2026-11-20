@@ -32,6 +32,7 @@ void Indicators_PairStart(uint32_t t){(void)t;leds=4;}
 void Indicators_PairSuccess(uint32_t t){(void)t;leds=4;}
 void Indicators_RxPulse(uint32_t t){(void)t;leds=2;}
 void Indicators_KeyAck(uint32_t t,uint8_t key){(void)t;leds=(uint8_t)(0x80U|key);}
+void Indicators_CommandAck(uint32_t t,uint8_t command){(void)t;leds=(uint8_t)(0x40U|command);}
 void Indicators_Fault(uint32_t t,uint8_t e){(void)t;(void)e;}
 void FastPair_Init(uint8_t t,uint32_t id){(void)t;(void)id;active=0;}
 void FastPair_Begin(uint32_t t,uint32_t s){(void)t;(void)s;assert(leds==4);++begins;active=1;}
@@ -66,6 +67,8 @@ int main(void)
     Inject(&m);assert(g_link.rx_valid_count==1&&sends==1&&leds==2);
     assert(outgoing.type==LINK_DATA_ACK&&outgoing.sender_id==222&&outgoing.receiver_id==111);
     Inject(&m);assert(g_link.rx_valid_count==1&&sends==2); /* retry ACK, no repeat indication */
+    m.payload=(uint8_t)(4U<<3);m.token=2;
+    Inject(&m);assert(g_link.rx_valid_count==2&&sends==3&&leds==0x44);
 #endif
     Poll(500,0);Poll(525,0);
     Poll(600,4);Poll(625,4);Poll(800,0);Poll(825,0);assert(!begins);

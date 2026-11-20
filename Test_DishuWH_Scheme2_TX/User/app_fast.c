@@ -115,10 +115,12 @@ void AppFast_Poll(void)
                 (m.session==rx_session&&m.token>rx_token));
             uint8_t duplicate=(uint8_t)(rx_seen&&m.session==rx_session&&m.token==rx_token);
             if(fresh) {
+                uint8_t command=(uint8_t)(m.payload>>3);
                 rx_seen=1;rx_session=m.session;rx_token=m.token;
                 ++g_link.rx_valid_count;
-                g_link.last_command=(uint8_t)(m.payload>>3);g_link.last_keys=(uint8_t)(m.payload&7);
-                Indicators_RxPulse(now);
+                g_link.last_command=command;g_link.last_keys=(uint8_t)(m.payload&7);
+                if(command>=3U&&command<=7U)Indicators_CommandAck(now,command);
+                else Indicators_RxPulse(now);
             }
             if(fresh||duplicate) {
                 reply=m;reply.type=LINK_DATA_ACK;reply.payload=1;

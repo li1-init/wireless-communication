@@ -22,6 +22,10 @@ void Indicators_RxPulse(uint32_t now);
 uint8_t Indicators_KeyLedMask(uint8_t key_mask);
 /** @brief ACK 匹配后点亮对应彩色灯 100 毫秒。 */
 void Indicators_KeyAck(uint32_t now,uint8_t key_mask);
+/** @brief 返回接收命令 3～7 对应的彩色反馈灯掩码。 */
+uint8_t Indicators_CommandLedMask(uint8_t command);
+/** @brief 接收端处理 W1～W5 命令时点亮对应彩色灯 100 毫秒。 */
+void Indicators_CommandAck(uint32_t now,uint8_t command);
 /** @brief 根据错误码输出循环红灯闪烁。 */
 void Indicators_Fault(uint32_t now,uint8_t error);
 /** @brief 在 SysTick 中推进灯效计时。 */

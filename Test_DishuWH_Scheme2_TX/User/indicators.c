@@ -89,6 +89,21 @@ void Indicators_KeyAck(uint32_t now,uint8_t key_mask)
 {
     TimedLight(now,ACK_LED_MS,Indicators_KeyLedMask(key_mask));
 }
+/** @brief 将协议命令 3～7 一一映射到红、蓝、绿、黄、白反馈灯。 */
+uint8_t Indicators_CommandLedMask(uint8_t command)
+{
+    if(command==3U)return LED_MASK_RED;
+    if(command==4U)return LED_MASK_BLUE;
+    if(command==5U)return LED_MASK_GREEN;
+    if(command==6U)return LED_MASK_YELLOW;
+    if(command==7U)return LED_MASK_WHITE;
+    return LED_MASK_RED|LED_MASK_GREEN|LED_MASK_WHITE;
+}
+/** @brief 接收端收到 W1～W5 数据包时点亮与发送端相同的对应灯。 */
+void Indicators_CommandAck(uint32_t now,uint8_t command)
+{
+    TimedLight(now,ACK_LED_MS,Indicators_CommandLedMask(command));
+}
 /** @brief 根据错误码输出循环红灯闪烁。 */
 void Indicators_Fault(uint32_t now,uint8_t error)
 {
