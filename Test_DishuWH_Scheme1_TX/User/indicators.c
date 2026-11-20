@@ -84,10 +84,13 @@ uint8_t Indicators_KeyLedMask(uint8_t key_mask)
     if(key_mask&KEY_W5_MASK)return LED_MASK_WHITE;
     return LED_MASK_RED|LED_MASK_GREEN|LED_MASK_WHITE;
 }
-/** @brief ACK 匹配后仅点亮本次按键对应的灯 100 毫秒。 */
+/** @brief ACK 匹配后点亮本次 W 键对应的灯，保持时间由宏定义。 */
 void Indicators_KeyAck(uint32_t now,uint8_t key_mask)
 {
-    TimedLight(now,ACK_LED_MS,Indicators_KeyLedMask(key_mask));
+    uint8_t is_w_key=(uint8_t)(key_mask&(KEY_W1_MASK|KEY_W2_MASK|KEY_W3_MASK|
+                                         KEY_W4_MASK|KEY_W5_MASK));
+    TimedLight(now,is_w_key?DISHU_KEY_LED_MS:TX_SUCCESS_LED_MS,
+               Indicators_KeyLedMask(key_mask));
 }
 /** @brief 将协议命令 3～7 一一映射到红、蓝、绿、黄、白反馈灯。 */
 uint8_t Indicators_CommandLedMask(uint8_t command)

@@ -4,7 +4,8 @@
 #ifndef INDICATORS_H
 #define INDICATORS_H
 #include <stdint.h>
-#define ACK_LED_MS 100UL
+#include "board_config.h"
+#define ACK_LED_MS DISHU_KEY_LED_MS
 /** @brief 依次显示三个启动灯，时序与原方板发送工程一致。 */
 void Indicators_Startup(void);
 /** @brief 显示无线初始化完成的绿灯提示。 */
@@ -19,11 +20,11 @@ void Indicators_PairSuccess(uint32_t now);
 void Indicators_RxPulse(uint32_t now);
 /** @brief 返回按键对应的彩色反馈灯掩码；普通键回退到原反馈灯组。 */
 uint8_t Indicators_KeyLedMask(uint8_t key_mask);
-/** @brief ACK 匹配后点亮对应彩色灯 100 毫秒。 */
+/** @brief ACK 匹配后点亮对应彩色灯，时长由 DISHU_KEY_LED_MS 定义。 */
 void Indicators_KeyAck(uint32_t now,uint8_t key_mask);
 /** @brief 返回接收命令 3～7 对应的彩色反馈灯掩码。 */
 uint8_t Indicators_CommandLedMask(uint8_t command);
-/** @brief 接收端处理 W1～W5 命令时点亮对应彩色灯 100 毫秒。 */
+/** @brief 接收端处理 W1～W5 命令时点亮对应彩色灯，时长由宏定义。 */
 void Indicators_CommandAck(uint32_t now,uint8_t command);
 /** @brief 根据错误码输出循环红灯闪烁。 */
 void Indicators_Fault(uint32_t now,uint8_t error);
