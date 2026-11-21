@@ -1,10 +1,23 @@
-Dishu-WH Test_DishuWH_Scheme1_RX
+# Test_DishuWH_Scheme1_RX
 
-独立 Keil 工程，基于当前快速 V5 一对一工程。FUN/STOP 输出默认为关闭，等待 board_config.h 冻结实际负载引脚后启用。
+方案一接收端独立 Keil 工程，使用 STM32L151C8T6 与 Si4438。
 
-发送端 W1～W5 使用内部下拉输入、3.3 V 高电平触发。接收端收到 W1～W5 数据包时点亮对应彩色灯；发送端收到匹配 ACK 后再点亮同一颗灯。保持时间由 `board_config.h` 的 `DISHU_KEY_LED_MS` 定义，方案一当前为 2000 ms：
+## 当前功能
 
-```text
-W1(PB9) -> R(PB3)    W2(PB6) -> B(PA12)   W3(PB8) -> G(PA11)
-W4(PB5) -> Y(PA10)   W5(PB4) -> W(PA9)
-```
+- V5 快速一对一通信，固定包长 28 字节，单个持久化对端。
+- 校验合法数据包并返回 `LINK_DATA_ACK`。
+- 收到 W1～W5 新命令后点亮对应反馈灯，灯亮 100 ms。
+- W1～W5 输入为内部下拉、高电平有效：W1 PB9、W2 PB6、W3 PB8、W4 PB5、W5 PB4。
+- 反馈灯映射：W1 红 PB3、W2 蓝 PA12、W3 绿 PA11、W4 黄 PA10、W5 白/W PA9。
+
+## 功能边界
+
+四路 FUN 互斥保持输出和 STOP 输出尚未实现。`DISHU_OUTPUTS_ENABLED` 为 0，输出引脚宏为 0；不能将当前 HEX 描述为已具备负载控制功能。
+
+## 构建
+
+- Keil 工程：`MDK/Test_DishuWH_Scheme1_RX.uvprojx`
+- HEX：`MDK/Build/Test_DishuWH_Scheme1_RX.hex`
+- 构建脚本：`build.ps1`
+
+构建日志与 HEX 位于 `MDK/Build`。编译通过不代表实体板无线或负载功能已验收。
