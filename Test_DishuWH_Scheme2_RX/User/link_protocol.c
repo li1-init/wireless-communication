@@ -1,73 +1,164 @@
-/* 本文件已完成项目自定义代码逐行说明；仅增加注释，不改变执行逻辑。 */
-/* 引入本模块所需的头文件接口。 */
+/**
+ * @file link_protocol.c
+ * @brief 链路帧 CRC、编码和解码实现。
+ */
 #include "link_protocol.h"
-/* 进入本模块的函数实现。 */
-uint16_t Link_Crc16(const uint8_t *p,uint8_t n)
-/* 开始当前代码块。 */
+
+/**
+ * @brief 计算链路帧的 CRC16。
+ * @param data 待校验数据。
+ * @param length 待校验数据长度。
+ * @return CRC16 校验值。
+ */
+uint16_t Link_Crc16(const uint8_t *data, uint8_t length)
 {
-/* 定义或初始化本模块使用的状态数据。 */
-    uint16_t c=0xffff;
-/* 执行当前语句。 */
-    uint8_t i,b;
-/* 循环处理当前任务，直到满足退出条件。 */
-    for(i=0;i<n;++i) { c^=(uint16_t)p[i]<<8; for(b=0;b<8;++b)
-/* 更新运行状态或计算结果。 */
-        c=(uint16_t)((c&0x8000)?((uint32_t)c<<1)^0x1021:(uint32_t)c<<1); }
-/* 返回当前函数的处理结果。 */
-    return c;
-/* 结束当前代码块。 */
+    uint16_t crc;
+    uint8_t index;
+    uint8_t bit;
+
+    crc = 0xffffU;
+
+    for (index = 0U; index < length; ++index)
+    {
+        crc ^= (uint16_t)data[index] << 8;
+
+        for (bit = 0U; bit < 8U; ++bit)
+        {
+            if (crc & 0x8000U)
+            {
+                crc = (uint16_t)(((uint32_t)crc << 1) ^ 0x1021U);
+            }
+            else
+            {
+                crc = (uint16_t)((uint32_t)crc << 1);
+            }
+        }
+    }
+
+    return crc;
 }
-/* 进入本模块的函数实现。 */
-static void Put(uint8_t *p,uint32_t v)
-/* 说明本行代码在当前模块中的处理作用。 */
-{uint8_t i;for(i=0;i<4;++i)p[i]=(uint8_t)(v>>(8U*i));}
-/* 进入本模块的函数实现。 */
-static uint32_t Get(const uint8_t *p)
-/* 说明本行代码在当前模块中的处理作用。 */
-{return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
-/* 进入本模块的函数实现。 */
-void Link_Encode(uint8_t p[28],const LinkMessage *m)
-/* 开始当前代码块。 */
+
+/**
+ * @brief 将 32 位整数按小端序写入缓冲区。
+ * @param data 目标缓冲区。
+ * @param value 待写入数值。
+ */
+static void Put(uint8_t *data, uint32_t value)
 {
-/* 定义或初始化本模块使用的状态数据。 */
-    uint16_t c;
-/* 执行当前语句。 */
-    p[0]='T';p[1]='R';p[2]=LINK_VERSION;p[3]=m->type;
-/* 调用相关模块接口完成当前处理步骤。 */
-    Put(p+4,m->sender_id);Put(p+8,m->receiver_id);Put(p+12,m->session);
-/* 调用相关模块接口完成当前处理步骤。 */
-    Put(p+16,m->token);Put(p+20,m->binding);p[24]=m->payload;p[25]=0;
-/* 更新运行状态或计算结果。 */
-    c=Link_Crc16(p,26);p[26]=(uint8_t)(c>>8);p[27]=(uint8_t)c;
-/* 结束当前代码块。 */
+    uint8_t index;
+
+    for (index = 0U; index < 4U; ++index)
+    {
+        data[index] = (uint8_t)(value >> (8U * index));
+    }
 }
-/* 进入本模块的函数实现。 */
-uint8_t Link_Decode(const uint8_t p[28],LinkMessage *m)
-/* 开始当前代码块。 */
+
+/**
+ * @brief 从缓冲区按小端序读取 32 位整数。
+ * @param data 源缓冲区。
+ * @return 读取到的数值。
+ */
+static uint32_t Get(const uint8_t *data)
 {
-/* 定义或初始化本模块使用的状态数据。 */
-    uint16_t c=Link_Crc16(p,26);
-/* 根据运行条件选择处理分支。 */
-    if(p[0]!='T'||p[1]!='R'||p[2]!=5||p[25]||
-/* 执行当前语句。 */
-       p[26]!=(uint8_t)(c>>8)||p[27]!=(uint8_t)c) return 0;
-/* 更新运行状态或计算结果。 */
-    m->type=p[3];m->sender_id=Get(p+4);m->receiver_id=Get(p+8);
-/* 更新运行状态或计算结果。 */
-    m->session=Get(p+12);m->token=Get(p+16);m->binding=Get(p+20);m->payload=p[24];
-/* 根据运行条件选择处理分支。 */
-    if(!m->sender_id||m->sender_id==0xffffffffUL||!m->session||!m->token)return 0;
-/* 进入本模块的函数实现。 */
-    if(m->type==LINK_PAIR_REQUEST)
-/* 返回当前函数的处理结果。 */
-        return (uint8_t)(!m->receiver_id&&!m->binding&&!m->payload);
-/* 根据运行条件选择处理分支。 */
-    if(!m->receiver_id||m->receiver_id==0xffffffffUL||!m->binding)return 0;
-/* 根据运行条件选择处理分支。 */
-    if(m->type==LINK_DATA)return (uint8_t)((m->payload>>3)>=1&&(m->payload>>3)<=7);
-/* 返回当前函数的处理结果。 */
-    return (uint8_t)((m->type==LINK_DATA_ACK||m->type==LINK_PAIR_ACK||
-/* 更新运行状态或计算结果。 */
-                     m->type==LINK_PAIR_COMMIT||m->type==LINK_PAIR_DONE)&&m->payload==1);
-/* 结束当前代码块。 */
+    return (uint32_t)data[0] |
+           ((uint32_t)data[1] << 8) |
+           ((uint32_t)data[2] << 16) |
+           ((uint32_t)data[3] << 24);
+}
+
+/**
+ * @brief 将链路消息编码为固定长度帧。
+ * @param packet 输出帧缓冲区。
+ * @param message 要编码的链路消息。
+ */
+void Link_Encode(uint8_t packet[LINK_PACKET_SIZE],
+                 const LinkMessage *message)
+{
+    uint16_t crc;
+
+    packet[0] = 'T';
+    packet[1] = 'R';
+    packet[2] = LINK_VERSION;
+    packet[3] = message->type;
+    Put(packet + 4U, message->sender_id);
+    Put(packet + 8U, message->receiver_id);
+    Put(packet + 12U, message->session);
+    Put(packet + 16U, message->token);
+    Put(packet + 20U, message->binding);
+    packet[24] = message->payload;
+    packet[25] = 0U;
+
+    crc = Link_Crc16(packet, 26U);
+    packet[26] = (uint8_t)(crc >> 8);
+    packet[27] = (uint8_t)crc;
+}
+
+/**
+ * @brief 校验并解码固定长度链路帧。
+ * @param packet 输入帧缓冲区。
+ * @param message 输出的链路消息。
+ * @return 校验和格式均正确时返回 1，否则返回 0。
+ */
+uint8_t Link_Decode(const uint8_t packet[LINK_PACKET_SIZE],
+                    LinkMessage *message)
+{
+    uint16_t crc;
+
+    crc = Link_Crc16(packet, 26U);
+
+    if (packet[0] != 'T' ||
+        packet[1] != 'R' ||
+        packet[2] != LINK_VERSION ||
+        packet[25] ||
+        packet[26] != (uint8_t)(crc >> 8) ||
+        packet[27] != (uint8_t)crc)
+    {
+        return 0U;
+    }
+
+    message->type = packet[3];
+    message->sender_id = Get(packet + 4U);
+    message->receiver_id = Get(packet + 8U);
+    message->session = Get(packet + 12U);
+    message->token = Get(packet + 16U);
+    message->binding = Get(packet + 20U);
+    message->payload = packet[24];
+
+    if (!message->sender_id ||
+        message->sender_id == 0xffffffffUL ||
+        !message->session ||
+        !message->token)
+    {
+        return 0U;
+    }
+
+    if (message->type == LINK_PAIR_REQUEST)
+    {
+        return (uint8_t)(
+            !message->receiver_id &&
+            !message->binding &&
+            !message->payload);
+    }
+
+    if (!message->receiver_id ||
+        message->receiver_id == 0xffffffffUL ||
+        !message->binding)
+    {
+        return 0U;
+    }
+
+    if (message->type == LINK_DATA)
+    {
+        uint8_t command;
+
+        command = (uint8_t)(message->payload >> 3);
+        return (uint8_t)(command >= 1U && command <= 7U);
+    }
+
+    return (uint8_t)(
+        (message->type == LINK_DATA_ACK ||
+         message->type == LINK_PAIR_ACK ||
+         message->type == LINK_PAIR_COMMIT ||
+         message->type == LINK_PAIR_DONE) &&
+        message->payload == 1U);
 }

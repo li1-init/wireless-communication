@@ -1,15 +1,21 @@
-/* 本文件已完成项目自定义代码逐行说明；仅增加注释，不改变执行逻辑。 */
-/* 引入本模块所需的头文件接口。 */
+/**
+ * @file main.c
+ * @brief 遥控器应用程序入口。
+ */
 #include "app_fast.h"
-/* 引入本模块所需的头文件接口。 */
 #include "radio_port.h"
-/* 进入本模块的函数实现。 */
+
+/**
+ * @brief 初始化应用并周期性执行主循环。
+ * @return 按嵌入式应用约定不会正常返回。
+ */
 int main(void)
-/* 开始当前代码块。 */
 {
-/* 调用相关模块接口完成当前处理步骤。 */
     AppFast_Init();
-/* 循环处理当前任务，直到满足退出条件。 */
-    for(;;){AppFast_Poll();Board_DelayMs(1);}
-/* 结束当前代码块。 */
+
+    while (1)
+    {
+        AppFast_Poll();
+        Board_DelayMs(1U);
+    }
 }

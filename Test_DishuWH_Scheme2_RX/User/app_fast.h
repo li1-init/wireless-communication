@@ -1,27 +1,68 @@
-/* 本文件已完成项目自定义代码逐行说明；仅增加注释，不改变执行逻辑。 */
-/* 根据编译条件选择对应实现。 */
+/**
+ * @file app_fast.h
+ * @brief 快速配对和链路应用状态接口。
+ */
 #ifndef APP_FAST_H
-/* 定义编译期常量或接口宏。 */
 #define APP_FAST_H
-/* 引入本模块所需的头文件接口。 */
+
 #include "link_protocol.h"
-/* 定义本模块使用的数据类型。 */
-typedef struct {
-/* 执行当前语句。 */
-    uint32_t local_id,peer_id,session,sequence;
-/* 执行当前语句。 */
-    uint32_t pair_success_count,pair_timeout_count,rx_valid_count,rx_rejected_count;
-/* 执行当前语句。 */
-    uint32_t ack_count,ack_timeout_count,tx_failed;
-/* 执行当前语句。 */
-    uint8_t online,pair_mode,last_command,last_keys;
-/* 执行当前语句。 */
+
+/**
+ * @brief 链路两端的身份及序号状态。
+ */
+typedef struct
+{
+    uint32_t local_id;
+    uint32_t peer_id;
+    uint32_t session;
+    uint32_t sequence;
+} FastIdentityState;
+
+/**
+ * @brief 链路运行计数器。
+ */
+typedef struct
+{
+    uint32_t pair_success_count;
+    uint32_t pair_timeout_count;
+    uint32_t rx_valid_count;
+    uint32_t rx_rejected_count;
+    uint32_t ack_count;
+    uint32_t ack_timeout_count;
+    uint32_t tx_failed;
+} FastCounterState;
+
+/**
+ * @brief 链路当前状态及最近一次业务数据。
+ */
+typedef struct
+{
+    uint8_t online;
+    uint8_t pair_mode;
+    uint8_t last_command;
+    uint8_t last_keys;
+} FastRuntimeState;
+
+/**
+ * @brief 快速链路的可观察状态。
+ */
+typedef struct
+{
+    FastIdentityState identity;
+    FastCounterState counters;
+    FastRuntimeState runtime;
 } FastStatus;
-/* 定义或初始化本模块使用的状态数据。 */
+
 extern volatile FastStatus g_link;
-/* 执行当前语句。 */
+
+/**
+ * @brief 初始化板级资源、持久化会话号和无线链路。
+ */
 void AppFast_Init(void);
-/* 执行当前语句。 */
+
+/**
+ * @brief 执行一次按键、配对、无线收发和指示灯轮询。
+ */
 void AppFast_Poll(void);
-/* 根据编译条件选择对应实现。 */
+
 #endif

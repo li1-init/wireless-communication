@@ -1,77 +1,169 @@
-/* 本文件已完成项目自定义代码逐行说明；仅增加注释，不改变执行逻辑。 */
-/* 引入本模块所需的头文件接口。 */
-#include <string.h>
-/* 引入本模块所需的头文件接口。 */
+/**
+ * @file fast_peer.c
+ * @brief 已配对对端信息的读取、校验和保存实现。
+ */
 #include "fast_peer.h"
-/* 引入本模块所需的头文件接口。 */
 #include "nv_store.h"
-/* 引入本模块所需的头文件接口。 */
 #include "link_protocol.h"
-/* 定义编译期常量或接口宏。 */
-#define BASE 0x08080700UL
-/* 定义编译期常量或接口宏。 */
-#define MAGIC 0x35524950UL
-/* 执行当前语句。 */
-static uint32_t peer_id,binding_id,generation;
-/* 定义或初始化本模块使用的状态数据。 */
-static uint8_t slot;
-/* 进入本模块的函数实现。 */
-static uint8_t Read(uint8_t s,uint32_t r[6])
-/* 开始当前代码块。 */
+
+#define FAST_PEER_BASE 0x08080700UL
+#define FAST_PEER_MAGIC 0x35524950UL
+
+/**
+ * @brief 已配对对端的运行状态。
+ */
+typedef struct
 {
-/* 调用相关模块接口完成当前处理步骤。 */
-    Nv_ReadBytes(BASE+(uint32_t)s*24UL,(uint8_t *)r,24);
-/* 返回当前函数的处理结果。 */
-    return (uint8_t)(r[0]==MAGIC&&r[1]&&r[1]!=0xffffffffUL&&r[2]&&r[3]&&
-/* 执行当前语句。 */
-        r[4]==~r[3]&&r[5]==Link_Crc16((const uint8_t *)r,20));
-/* 结束当前代码块。 */
+    uint32_t peer_id;
+    uint32_t binding_id;
+    uint32_t generation;
+    uint8_t slot;
+} FastPeerState;
+
+static FastPeerState peer_state;
+
+/**
+ * @brief 读取并校验一个对端存储槽。
+ * @param slot_index 存储槽编号。
+ * @param record 输出的六字记录。
+ * @return 记录有效时返回 1，否则返回 0。
+ */
+static uint8_t Read(uint8_t slot_index, uint32_t record[6])
+{
+    uint32_t address;
+
+    address = FAST_PEER_BASE + (uint32_t)slot_index * 24UL;
+    Nv_ReadBytes(address, (uint8_t *)record, 24U);
+
+    return (uint8_t)(
+        record[0] == FAST_PEER_MAGIC &&
+        record[1] &&
+        record[1] != 0xffffffffUL &&
+        record[2] &&
+        record[3] &&
+        record[4] == ~record[3] &&
+        record[5] == Link_Crc16((const uint8_t *)record, 20U));
 }
-/* 进入本模块的函数实现。 */
+
+/**
+ * @brief 从非易失存储加载已绑定的对端信息。
+ */
 void FastPeer_Init(void)
-/* 开始当前代码块。 */
 {
-/* 定义或初始化本模块使用的状态数据。 */
-    uint32_t a[6],b[6],*r=0;
-/* 定义或初始化本模块使用的状态数据。 */
-    uint8_t va=Read(0,a),vb=Read(1,b);
-/* 更新运行状态或计算结果。 */
-    peer_id=binding_id=generation=0;slot=0;
-/* 进入本模块的函数实现。 */
-    if(vb&&(!va||b[3]>a[3])){r=b;slot=1;}else if(va)r=a;
-/* 进入本模块的函数实现。 */
-    if(r){peer_id=r[1];binding_id=r[2];generation=r[3];}
-/* 结束当前代码块。 */
+    uint32_t first_record[6];
+    uint32_t second_record[6];
+    uint32_t *selected_record;
+    uint8_t first_valid;
+    uint8_t second_valid;
+
+    selected_record = 0;
+    first_valid = Read(0U, first_record);
+    second_valid = Read(1U, second_record);
+
+    peer_state.peer_id = 0U;
+    peer_state.binding_id = 0U;
+    peer_state.generation = 0U;
+    peer_state.slot = 0U;
+
+    if (second_valid && (!first_valid ||
+                         second_record[3] > first_record[3]))
+    {
+        selected_record = second_record;
+        peer_state.slot = 1U;
+    }
+    else if (first_valid)
+    {
+        selected_record = first_record;
+    }
+
+    if (selected_record)
+    {
+        peer_state.peer_id = selected_record[1];
+        peer_state.binding_id = selected_record[2];
+        peer_state.generation = selected_record[3];
+    }
 }
-/* 进入本模块的函数实现。 */
-uint32_t FastPeer_Id(void){return peer_id;}
-/* 进入本模块的函数实现。 */
-uint32_t FastPeer_Binding(void){return binding_id;}
-/* 进入本模块的函数实现。 */
-uint8_t FastPeer_Accepts(const LinkMessage *m,uint32_t local)
-/* 说明本行代码在当前模块中的处理作用。 */
-{return (uint8_t)(peer_id&&m->sender_id==peer_id&&m->receiver_id==local&&m->binding==binding_id);}
-/* 进入本模块的函数实现。 */
-uint8_t FastPeer_Save(uint32_t peer,uint32_t binding)
-/* 开始当前代码块。 */
+
+/**
+ * @brief 获取已绑定的对端设备 ID。
+ * @return 对端设备 ID，未绑定时返回 0。
+ */
+uint32_t FastPeer_Id(void)
 {
-/* 定义或初始化本模块使用的状态数据。 */
-    uint32_t r[6],zero=0,address=BASE+(uint32_t)(!slot)*24UL;
-/* 根据运行条件选择处理分支。 */
-    if(!peer||peer==0xffffffffUL||!binding||generation>=0xfffffffeUL)return 0;
-/* 根据运行条件选择处理分支。 */
-    if(peer==peer_id&&binding==binding_id)return 1;
-/* 执行当前语句。 */
-    r[0]=MAGIC;r[1]=peer;r[2]=binding;r[3]=generation+1;r[4]=~r[3];
-/* 执行当前语句。 */
-    r[5]=Link_Crc16((const uint8_t *)r,20);
-/* 根据运行条件选择处理分支。 */
-    if(!Nv_WriteBytes(address,(const uint8_t *)&zero,4)||
-/* 说明本行代码在当前模块中的处理作用。 */
-       !Nv_WriteBytes(address+4,(const uint8_t *)(r+1),20)||
-/* 执行当前语句。 */
-       !Nv_WriteBytes(address,(const uint8_t *)r,4))return 0;
-/* 更新运行状态或计算结果。 */
-    peer_id=peer;binding_id=binding;++generation;slot=(uint8_t)!slot;return 1;
-/* 结束当前代码块。 */
+    return peer_state.peer_id;
+}
+
+/**
+ * @brief 获取当前绑定标识。
+ * @return 绑定标识，未绑定时返回 0。
+ */
+uint32_t FastPeer_Binding(void)
+{
+    return peer_state.binding_id;
+}
+
+/**
+ * @brief 判断收到的消息是否来自当前绑定对端。
+ * @param message 待检查的消息。
+ * @param local 本机设备 ID。
+ * @return 消息可接受时返回 1，否则返回 0。
+ */
+uint8_t FastPeer_Accepts(const LinkMessage *message, uint32_t local)
+{
+    return (uint8_t)(
+        peer_state.peer_id &&
+        message->sender_id == peer_state.peer_id &&
+        message->receiver_id == local &&
+        message->binding == peer_state.binding_id);
+}
+
+/**
+ * @brief 保存对端设备 ID 和绑定标识。
+ * @param peer 对端设备 ID。
+ * @param binding 绑定标识。
+ * @return 保存并校验成功时返回 1，否则返回 0。
+ */
+uint8_t FastPeer_Save(uint32_t peer, uint32_t binding)
+{
+    uint32_t record[6];
+    uint32_t zero;
+    uint32_t address;
+
+    zero = 0U;
+    address = FAST_PEER_BASE + (uint32_t)(!peer_state.slot) * 24UL;
+
+    if (!peer ||
+        peer == 0xffffffffUL ||
+        !binding ||
+        peer_state.generation >= 0xfffffffeUL)
+    {
+        return 0U;
+    }
+
+    if (peer == peer_state.peer_id &&
+        binding == peer_state.binding_id)
+    {
+        return 1U;
+    }
+
+    record[0] = FAST_PEER_MAGIC;
+    record[1] = peer;
+    record[2] = binding;
+    record[3] = peer_state.generation + 1U;
+    record[4] = ~record[3];
+    record[5] = Link_Crc16((const uint8_t *)record, 20U);
+
+    if (!Nv_WriteBytes(address, (const uint8_t *)&zero, 4U) ||
+        !Nv_WriteBytes(address + 4U, (const uint8_t *)(record + 1), 20U) ||
+        !Nv_WriteBytes(address, (const uint8_t *)record, 4U))
+    {
+        return 0U;
+    }
+
+    peer_state.peer_id = peer;
+    peer_state.binding_id = binding;
+    ++peer_state.generation;
+    peer_state.slot = (uint8_t)!peer_state.slot;
+
+    return 1U;
 }

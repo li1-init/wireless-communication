@@ -1,71 +1,101 @@
-/* 本文件已完成项目自定义代码逐行说明；仅增加注释，不改变执行逻辑。 */
-/* 文件说明：启动记录模块：用交替 EEPROM 记录分配启动或事务代号，检查记录完整性。
- * 注释范围：自编应用代码；厂商库与自动生成的射频配置不在本次补注释范围内。
+/**
+ * @file session_store.c
+ * @brief 持久化会话号分配实现。
  */
-/* This module stores reboot epochs in STM32L1 Data EEPROM. */
-/* 引入本模块所需的头文件接口。 */
 #include "session_store.h"
-/* 引入本模块所需的头文件接口。 */
 #include "nv_store.h"
-/** @brief 读取并验证启动代号及反码，只返回完整记录。 */
-/* 进入本模块的函数实现。 */
-static uint8_t ReadRecord(uint32_t address,uint32_t *value)
-/* 开始当前代码块。 */
+
+#define SESSION_STORE_FIRST 0x08080008UL
+#define SESSION_STORE_SECOND 0x08080010UL
+#define SESSION_STORE_LEGACY 0x08080000UL
+
+/**
+ * @brief 读取并验证一条会话号记录。
+ * @param address 记录起始地址。
+ * @param value 输出的会话号。
+ * @return 记录有效时返回 1，否则返回 0。
+ */
+static uint8_t ReadRecord(uint32_t address, uint32_t *value)
 {
-/* 定义或初始化本模块使用的状态数据。 */
-    uint32_t count=Nv_ReadWord(address);
-/* 定义或初始化本模块使用的状态数据。 */
-    uint32_t inverse=Nv_ReadWord(address+4UL);
-/* 根据运行条件选择处理分支。 */
-    if(Nv_IsBlank(count) || inverse!=~count) return 0U;
-    *value=count;
-/* 返回当前函数的处理结果。 */
-    return 1U;
-/* 结束当前代码块。 */
-}
-/** @brief 选择最新有效记录，在另一槽写入下一代号；成功后才返回。 */
-/* 进入本模块的函数实现。 */
-uint8_t SessionStore_Next(uint32_t *session)
-/* 开始当前代码块。 */
-{
-/* 定义或初始化本模块使用的状态数据。 */
-    const uint32_t first=0x08080008UL,second=0x08080010UL;
-/* 定义或初始化本模块使用的状态数据。 */
-    uint32_t a=0U,b=0U,legacy,previous=0U,next,address;
-/* 定义或初始化本模块使用的状态数据。 */
-    uint8_t valid_a=ReadRecord(first,&a),valid_b=ReadRecord(second,&b);
-/* 进入本模块的函数实现。 */
-    if(valid_a && (!valid_b || a>b)) {
-/* 更新运行状态或计算结果。 */
-        previous=a; address=second;
-/* 说明本行代码在当前模块中的处理作用。 */
-    } else if(valid_b) {
-/* 更新运行状态或计算结果。 */
-        previous=b; address=first;
-/* 说明本行代码在当前模块中的处理作用。 */
-    } else {
-/* 更新运行状态或计算结果。 */
-        legacy=Nv_ReadWord(0x08080000UL);
-/* 根据运行条件选择处理分支。 */
-        if(!Nv_IsBlank(Nv_ReadWord(first+4UL)) ||
-/* 说明本行代码在当前模块中的处理作用。 */
-           !Nv_IsBlank(Nv_ReadWord(second)) ||
-/* 执行当前语句。 */
-           !Nv_IsBlank(Nv_ReadWord(second+4UL))) return 0U;
-/* 更新运行状态或计算结果。 */
-        previous=Nv_IsBlank(legacy) ? 0U : legacy;
-/* 更新运行状态或计算结果。 */
-        address=first;
-/* 结束当前代码块。 */
+    uint32_t count;
+    uint32_t inverse;
+
+    count = Nv_ReadWord(address);
+    inverse = Nv_ReadWord(address + 4UL);
+
+    if (Nv_IsBlank(count) || inverse != ~count)
+    {
+        return 0U;
     }
-/* 根据运行条件选择处理分支。 */
-    if(previous>=0xFFFFFFFEUL) return 0U;
-/* 更新运行状态或计算结果。 */
-    next=previous+1UL;
-/* 根据运行条件选择处理分支。 */
-    if(!Nv_WritePair(address,next) || !ReadRecord(address,&a) || a!=next) return 0U;
-    *session=next;
-/* 返回当前函数的处理结果。 */
+
+    *value = count;
     return 1U;
-/* 结束当前代码块。 */
+}
+
+/**
+ * @brief 选择最新记录并写入下一个会话号。
+ * @param session 输出的会话号。
+ * @return 分配并校验成功时返回 1，否则返回 0。
+ */
+uint8_t SessionStore_Next(uint32_t *session)
+{
+    uint32_t first;
+    uint32_t second;
+    uint32_t legacy;
+    uint32_t previous;
+    uint32_t next;
+    uint32_t address;
+    uint8_t first_valid;
+    uint8_t second_valid;
+
+    first = 0U;
+    second = 0U;
+    legacy = 0U;
+    previous = 0U;
+    next = 0U;
+    address = 0U;
+    first_valid = ReadRecord(SESSION_STORE_FIRST, &first);
+    second_valid = ReadRecord(SESSION_STORE_SECOND, &second);
+
+    if (first_valid && (!second_valid || first > second))
+    {
+        previous = first;
+        address = SESSION_STORE_SECOND;
+    }
+    else if (second_valid)
+    {
+        previous = second;
+        address = SESSION_STORE_FIRST;
+    }
+    else
+    {
+        legacy = Nv_ReadWord(SESSION_STORE_LEGACY);
+
+        if (!Nv_IsBlank(Nv_ReadWord(SESSION_STORE_FIRST + 4UL)) ||
+            !Nv_IsBlank(Nv_ReadWord(SESSION_STORE_SECOND)) ||
+            !Nv_IsBlank(Nv_ReadWord(SESSION_STORE_SECOND + 4UL)))
+        {
+            return 0U;
+        }
+
+        previous = Nv_IsBlank(legacy) ? 0U : legacy;
+        address = SESSION_STORE_FIRST;
+    }
+
+    if (previous >= 0xFFFFFFFEUL)
+    {
+        return 0U;
+    }
+
+    next = previous + 1UL;
+
+    if (!Nv_WritePair(address, next) ||
+        !ReadRecord(address, &first) ||
+        first != next)
+    {
+        return 0U;
+    }
+
+    *session = next;
+    return 1U;
 }

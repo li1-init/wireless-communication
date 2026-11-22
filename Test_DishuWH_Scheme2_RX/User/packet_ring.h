@@ -1,76 +1,128 @@
-/* 本文件已完成项目自定义代码逐行说明；仅增加注释，不改变执行逻辑。 */
-/* 文件说明：软件环形包队列：保存完整数据包，管理入队、出队及包长度和内存范围查询。
- * 注释范围：自编应用代码；厂商库与自动生成的射频配置不在本次补注释范围内。
+/**
+ * @file packet_ring.h
+ * @brief 软件环形包队列接口。
  */
-/* 根据编译条件选择对应实现。 */
 #ifndef PACKET_RING_H
-/* 定义编译期常量或接口宏。 */
 #define PACKET_RING_H
-/* 引入本模块所需的头文件接口。 */
+
 #include <stdint.h>
-/* 引入本模块所需的头文件接口。 */
 #include "link_protocol.h"
-/* 定义编译期常量或接口宏。 */
+
 #define PACKET_RING_SLOTS 8U
-/* 定义编译期常量或接口宏。 */
 #define PACKET_RING_BYTES (PACKET_RING_SLOTS*LINK_PACKET_SIZE)
-/* All offsets are bytes. End is exclusive, and can equal capacity.
- * Complete frames occupy one slot, so DMA never crosses the ring boundary. */
-/* 定义本模块使用的数据类型。 */
-typedef struct {
-/* 执行当前语句。 */
-    uint32_t base_address,capacity,read_offset,write_offset;
-/* 执行当前语句。 */
-    uint32_t queued_packets,queued_bytes,last_size,last_start,last_end;
-/* 执行当前语句。 */
-    uint32_t last_start_address,last_end_address,overflow_count;
-/* 执行当前语句。 */
-    uint32_t last_read_size,last_read_start,last_read_end;
-/* 执行当前语句。 */
-    uint32_t last_read_start_address,last_read_end_address;
-/* 执行当前语句。 */
+
+/**
+ * @brief 环形包队列的可观察统计信息。
+ */
+typedef struct
+{
+    uint32_t base_address;
+    uint32_t capacity;
+    uint32_t read_offset;
+    uint32_t write_offset;
+    uint32_t queued_packets;
+    uint32_t queued_bytes;
+    uint32_t last_size;
+    uint32_t last_start;
+    uint32_t last_end;
+    uint32_t last_start_address;
+    uint32_t last_end_address;
+    uint32_t overflow_count;
+    uint32_t last_read_size;
+    uint32_t last_read_start;
+    uint32_t last_read_end;
+    uint32_t last_read_start_address;
+    uint32_t last_read_end_address;
 } PacketRingInfo;
-/* 定义本模块使用的数据类型。 */
-typedef struct {
-/* 定义或初始化本模块使用的状态数据。 */
+
+/**
+ * @brief 环形包队列的运行数据。
+ */
+typedef struct
+{
     uint8_t data[PACKET_RING_SLOTS][LINK_PACKET_SIZE];
-/* 定义或初始化本模块使用的状态数据。 */
     uint16_t lengths[PACKET_RING_SLOTS];
-/* 执行当前语句。 */
-    uint16_t head,tail,count,last_size,last_start,last_end;
-/* 执行当前语句。 */
-    uint16_t last_read_size,last_read_start,last_read_end;
-/* 定义或初始化本模块使用的状态数据。 */
+    uint16_t head;
+    uint16_t tail;
+    uint16_t count;
+    uint16_t last_size;
+    uint16_t last_start;
+    uint16_t last_end;
+    uint16_t last_read_size;
+    uint16_t last_read_start;
+    uint16_t last_read_end;
     uint32_t overflow;
-/* 执行当前语句。 */
 } PacketRing;
-/* Single main-loop owner, not an ISR/multi-thread queue. */
-/** @brief 清空队列索引、长度和统计信息，不需要清零每个数据字节。 */
-/* 执行当前语句。 */
+
+/**
+ * @brief 清空队列索引、长度和统计信息。
+ * @param ring 要初始化的队列。
+ */
 void PacketRing_Init(PacketRing *ring);
-/** @brief 预留下一写入槽；满时返回空指针并增加溢出计数。 */
-/* 执行当前语句。 */
+
+/**
+ * @brief 预留下一写入槽。
+ * @param ring 目标队列。
+ * @return 可写入的槽地址，队列已满时返回空指针。
+ */
 uint8_t *PacketRing_Reserve(PacketRing *ring);
-/** @brief DMA 或复制完成后发布一包，记录长度并推进写位置。 */
-/* 执行当前语句。 */
-uint8_t PacketRing_Commit(PacketRing *ring,uint16_t size);
-/** @brief 把外部数据复制到空槽并提交入队，失败时不覆盖未读数据。 */
-/* 执行当前语句。 */
-uint8_t PacketRing_Push(PacketRing *ring,const uint8_t *packet,uint16_t size);
-/** @brief 返回队首数据地址但不出队；空队列返回空指针。 */
-/* 执行当前语句。 */
+
+/**
+ * @brief 提交最近预留的槽并推进写位置。
+ * @param ring 目标队列。
+ * @param size 当前数据包长度。
+ * @return 提交成功时返回 1，否则返回 0。
+ */
+uint8_t PacketRing_Commit(PacketRing *ring, uint16_t size);
+
+/**
+ * @brief 复制外部数据到空槽并提交入队。
+ * @param ring 目标队列。
+ * @param packet 待复制的数据。
+ * @param size 数据长度。
+ * @return 入队成功时返回 1，否则返回 0。
+ */
+uint8_t PacketRing_Push(PacketRing *ring,
+                        const uint8_t *packet,
+                        uint16_t size);
+
+/**
+ * @brief 查看队首数据但不出队。
+ * @param ring 目标队列。
+ * @return 队首数据地址，队列为空时返回空指针。
+ */
 const uint8_t *PacketRing_Peek(const PacketRing *ring);
-/** @brief 记录最近出队包的边界并推进读位置，释放该槽位。 */
-/* 执行当前语句。 */
+
+/**
+ * @brief 释放队首槽并推进读位置。
+ * @param ring 目标队列。
+ */
 void PacketRing_Pop(PacketRing *ring);
-/** @brief 复制队首完整包到调用者缓冲区并出队，返回长度。 */
-/* 执行当前语句。 */
-uint16_t PacketRing_Read(PacketRing *ring,uint8_t *packet);
-/** @brief 复制最近入队的包用于查看；地址内容随后可能被复用。 */
-/* 执行当前语句。 */
-uint16_t PacketRing_CopyLast(const PacketRing *ring,uint8_t *packet,uint16_t capacity);
-/** @brief 返回容量、排队数量、读写位置及最近包范围；结束偏移不包含该位置。 */
-/* 执行当前语句。 */
-void PacketRing_GetInfo(const PacketRing *ring,PacketRingInfo *info);
-/* 根据编译条件选择对应实现。 */
+
+/**
+ * @brief 复制队首数据到调用者缓冲区并出队。
+ * @param ring 目标队列。
+ * @param packet 输出缓冲区。
+ * @return 复制的数据长度。
+ */
+uint16_t PacketRing_Read(PacketRing *ring, uint8_t *packet);
+
+/**
+ * @brief 复制最近入队的数据包。
+ * @param ring 目标队列。
+ * @param packet 输出缓冲区。
+ * @param capacity 输出缓冲区容量。
+ * @return 复制的数据长度。
+ */
+uint16_t PacketRing_CopyLast(const PacketRing *ring,
+                             uint8_t *packet,
+                             uint16_t capacity);
+
+/**
+ * @brief 获取队列容量、读写位置和最近数据范围。
+ * @param ring 目标队列。
+ * @param info 输出的统计信息。
+ */
+void PacketRing_GetInfo(const PacketRing *ring, PacketRingInfo *info);
+
 #endif
