@@ -1,0 +1,1 @@
+c4d4296ef3461cf8de07190c5a73bf6db582de4a8a5cdb247138e1dceb1a8541  MDK/Build/Test_RadioTX_Secure_Square.hex

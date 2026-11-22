@@ -17,6 +17,7 @@ Keil：`MDK\Test_RadioTX_Secure_Square.uvprojx`
 HEX：`MDK\Build\Test_RadioTX_Secure_Square.hex`
 构建：`.\build.ps1`
 
-本原型安装密钥含在源码/固件里，不能抵御掌握密钥者；
+构建时需要在本地提供 `User/provision_secret.h` 中的安装密钥。请通过私下渠道获取和保管该文件及含有密钥的固件。
+本原型安装密钥会编入固件，不能抵御掌握密钥者；
 没有设置硬件读保护。安全版仍不保证射频信号不可采集。
 不能和 V5 快速版混用。初次升级本严格单对端版本建议双方重新对码。

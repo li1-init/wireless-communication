@@ -8,7 +8,7 @@
 - `Test_BySchematic/User/`：按 `硬件/eTrap-01MS Luminator Ver10.pdf` 编写的测试程序。
 - `硬件/发射.pcb`：MCU、LED、按键与 Si4438 的最终连接依据。
 
-构建产物（`.o`、`.axf`、`.hex`、`.map`、`.crf`、`.d` 等）和未修改的第三方库不纳入 Git。
+仓库包含工程源码、构建依赖和项目文档。构建产物（`.o`、`.axf`、`.hex`、`.map`、`.crf`、`.d` 等）、本地缓存及部署密钥由 `.gitignore` 排除。
 
 ## 实测合并后的板卡引脚
 

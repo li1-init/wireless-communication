@@ -1,61 +1,45 @@
-# Keep the repository source-focused. Generated Keil output, caches, and
-# third-party unchanged libraries are intentionally excluded.
-*
-!*/
+# Keil / ARM build output, including legacy projects that emit into MDK.
+**/MDK/Build/
+*.axf
+*.hex
+*.o
+*.obj
+*.d
+*.crf
+*.dep
+*.lnp
+*.map
+*.lst
+*.build_log.htm
+**/MDK/*.htm
+*.iex
+*.plg
+*.tra
+*.log
 
-# Original/common application source
-!Dishu-WH_Rced/User/**
-!Dishu-WH_Trans/User/**
+# Local test executables and bundled tool binaries.
+*.exe
 
-# Test applications and their Keil project definitions
-!Test_ByPCB/User/**
-!Test_ByPCB/MDK/*.uvprojx
-!Test_ByPCB/MDK/Test_ByPCB.sct
-!Test_BySchematic/User/**
-!Test_BySchematic/MDK/*.uvprojx
-!Test_BySchematic/MDK/Test_BySchematic.sct
+# Device provisioning secrets and local environment files.
+provision_secret.h
+.env
+.env.*
+!.env.example
 
-# Only active maintained send/receive projects
-!Test_RadioTX_Square/
-!Test_RadioTX_Square/User/**
-!Test_RadioTX_Square/MDK/*.uvprojx
-!Test_RadioTX_Square/MDK/*.uvoptx
-!Test_RadioTX_Square/MDK/Build/*.hex
-!Test_RadioRX_Round/
-!Test_RadioRX_Round/User/**
-!Test_RadioRX_Round/MDK/*.uvprojx
-!Test_RadioRX_Round/MDK/*.uvoptx
-!Test_RadioRX_Round/MDK/Build/*.hex
+# Python bytecode and tool caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
 
-# Standalone five-color LED GPIO test
-!Test_ColorLED_Slow_Blink/
-!Test_ColorLED_Slow_Blink/User/**
-!Test_ColorLED_Slow_Blink/MDK/*.uvprojx
-!Test_ColorLED_Slow_Blink/MDK/*.uvoptx
-!Test_ColorLED_Slow_Blink/MDK/*.sct
-!Test_ColorLED_Slow_Blink/MDK/*.s
-!Test_ColorLED_Slow_Blink/README.md
-!Test_ColorLED_Slow_Blink/build.ps1
-
-# Editor/local backups are not source history
-*.bak
-
-# Hardware evidence used to derive the pin map
-!硬件/*.pcb
-!硬件/*.pdf
-!硬件/*.docx
-!MCU引脚测试说明与最终引脚表.docx
-!实际板卡IO引脚反推结论_三灯三键_20261115.docx
-!已经测试成功的IO口.docx
-!STLink只读调试与无线收发故障定位技术文档.md
-!STLink只读调试与无线收发故障定位技术文档.docx
-!方板发送端_MCU无线连接与通信协议_合并版.md
-!方板发送端_MCU无线连接与通信协议_合并版.docx
-!圆板接收端_MCU无线连接与通信协议_合并版.md
-!圆板接收端_MCU无线连接与通信协议_合并版.docx
-!双板无线通信项目总文档.md
-!双板无线通信项目总文档.docx
-
-# Repository documentation
-!README.md
-!.gitignore
+# Keil UI state, editor backups, and OS/Office temporary files.
+*.uvguix.*
+*.uvgui.*
+*.uv2gui.*
+*.[Bb][Aa][Kk]
+*.tmp
+*~
+~$*
+Thumbs.db
+Desktop.ini
+.DS_Store
+/$null
